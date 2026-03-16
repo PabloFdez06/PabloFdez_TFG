@@ -1,0 +1,246 @@
+.c-auth-layout {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.c-auth-layout__container {
+    width: min(460px, 100%);
+}
+
+.c-auth-layout--card .c-auth-layout__container {
+    display: grid;
+    gap: 1rem;
+}
+
+.c-auth-panel--card {
+    border: 0;
+    box-shadow: none;
+}
+
+.c-auth-layout--split {
+    grid-template-columns: 1fr;
+    place-items: stretch;
+    padding: 0;
+}
+
+.c-auth-layout__media {
+    display: none;
+}
+
+.c-auth-layout__media-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgb(6 15 36 / 65%), rgb(17 39 82 / 35%));
+}
+
+.c-auth-brand--light {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+}
+
+@media (min-width: 960px) {
+    .c-auth-layout--split {
+        grid-template-columns: minmax(320px, 42%) minmax(420px, 1fr);
+    }
+
+    .c-auth-layout__media {
+        position: relative;
+        display: grid;
+        align-items: end;
+        padding: 1.5rem;
+        background: radial-gradient(circle at 15% 20%, #2962ff, #0f2f75 45%, #08142b 100%);
+    }
+
+    .c-auth-layout--split .c-auth-layout__container {
+        width: min(520px, 100% - 2rem);
+        margin: auto;
+        display: grid;
+        place-items: center;
+    }
+
+    .c-auth-panel--split {
+        width: 100%;
+    }
+}
+
+.c-auth-panel {
+    width: min(430px, 100%);
+    border: 1px solid var(--color-border);
+    border-radius: 0.8rem;
+    background: var(--color-surface);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 10%);
+}
+
+.c-auth-panel__header,
+.c-auth-panel__body {
+    padding: 1.2rem;
+}
+
+.c-auth-panel__header {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.c-auth-panel__intro {
+    margin-top: 0.9rem;
+}
+
+.c-auth-panel__heading {
+    font-size: 1.2rem;
+}
+
+.c-auth-panel__description {
+    margin-top: 0.4rem;
+}
+
+.c-auth-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-decoration: none;
+}
+
+.c-auth-brand__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-muted);
+}
+
+.c-auth-brand__logo {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.c-auth-brand__title {
+    font-weight: 700;
+}
+
+.c-auth-form,
+.c-auth-form-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.c-auth-form__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.c-auth-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.c-auth-form__label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.c-auth-form__actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.c-auth-form__submit {
+    width: 100%;
+}
+
+.c-auth-form__icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.c-auth-form__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.c-auth-form__alt {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    font-size: 0.94rem;
+}
+
+.c-auth-form__status {
+    border: 1px solid var(--color-border);
+    border-radius: 0.55rem;
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    padding: 0.65rem 0.8rem;
+    font-size: 0.94rem;
+}
+
+.c-auth-form__otp {
+    overflow-x: auto;
+}
+
+.c-auth-form--inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.c-auth-form__readonly {
+    background: var(--color-surface-muted);
+}
+
+.c-auth-form__toggle {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+
+.c-password-input {
+    position: relative;
+}
+
+.c-password-input__control {
+    padding-right: 2.4rem;
+}
+
+.c-password-input__toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    display: inline-grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+}
+
+.c-password-input__toggle:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+}
+
+.c-password-input__icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.c-input-error {
+    margin-top: 0.1rem;
+    color: var(--color-danger);
+    font-size: 0.83rem;
+}

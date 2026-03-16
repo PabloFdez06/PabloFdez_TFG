@@ -1,0 +1,31 @@
+@use './tokens' as t;
+@use './_variables' as v;
+
+:root {
+    --font-sans: #{t.$font-sans};
+    --color-bg: #{v.$color-bg-light};
+    --color-surface: #{v.$color-surface-light};
+    --color-surface-muted: #{v.$color-surface-muted-light};
+    --color-text: #{v.$color-text-light};
+    --color-text-muted: #{v.$color-text-muted-light};
+    --color-border: #{v.$color-border-light};
+    --color-brand: #{v.$color-brand-light};
+    --color-brand-contrast: #{v.$color-brand-contrast-light};
+    --color-danger: #{v.$color-danger-light};
+    --color-danger-soft: #{v.$color-danger-soft-light};
+    --color-ring: #{v.$color-ring-light};
+}
+
+.dark {
+    --color-bg: #{v.$color-bg-dark};
+    --color-surface: #{v.$color-surface-dark};
+    --color-surface-muted: #{v.$color-surface-muted-dark};
+    --color-text: #{v.$color-text-dark};
+    --color-text-muted: #{v.$color-text-muted-dark};
+    --color-border: #{v.$color-border-dark};
+    --color-brand: #{v.$color-brand-dark};
+    --color-brand-contrast: #{v.$color-brand-contrast-dark};
+    --color-danger: #{v.$color-danger-dark};
+    --color-danger-soft: #{v.$color-danger-soft-dark};
+    --color-ring: #{v.$color-ring-dark};
+}

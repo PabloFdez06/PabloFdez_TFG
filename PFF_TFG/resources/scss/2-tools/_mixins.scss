@@ -1,0 +1,18 @@
+@use '../1-settings/breakpoints' as bp;
+
+@mixin up($name) {
+    @if $name == sm {
+        @media (min-width: bp.$bp-sm) { @content; }
+    } @else if $name == md {
+        @media (min-width: bp.$bp-md) { @content; }
+    } @else if $name == lg {
+        @media (min-width: bp.$bp-lg) { @content; }
+    } @else if $name == xl {
+        @media (min-width: bp.$bp-xl) { @content; }
+    }
+}
+
+@mixin focus-ring {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+}

@@ -1,0 +1,5 @@
+.c-app-header {
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-surface), transparent 15%);
+    backdrop-filter: blur(4px);
+}

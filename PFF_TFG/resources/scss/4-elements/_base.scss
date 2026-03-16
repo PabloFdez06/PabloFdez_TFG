@@ -1,0 +1,19 @@
+body {
+    font-family: var(--font-sans);
+    background: radial-gradient(circle at 12% 10%, #f0f6ff 0%, var(--color-bg) 45%);
+    color: var(--color-text);
+    line-height: 1.5;
+}
+
+.dark body {
+    background: radial-gradient(circle at 12% 10%, #111b30 0%, var(--color-bg) 45%);
+}
+
+a {
+    color: inherit;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+}

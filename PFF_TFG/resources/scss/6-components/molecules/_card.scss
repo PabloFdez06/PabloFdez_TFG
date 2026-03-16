@@ -1,0 +1,16 @@
+.c-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.8rem;
+    overflow: hidden;
+}
+
+.c-card__header,
+.c-card__content,
+.c-card__footer {
+    padding: 1rem 1.2rem;
+}
+
+.c-card__header {
+    border-bottom: 1px solid var(--color-border);
+}

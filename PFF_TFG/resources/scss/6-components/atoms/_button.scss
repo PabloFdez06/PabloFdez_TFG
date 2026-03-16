@@ -1,0 +1,82 @@
+@use '../../1-settings/tokens' as t;
+
+.c-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid transparent;
+    border-radius: t.$radius-md;
+    padding: 0.6rem 1rem;
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.c-button:hover {
+    background: color-mix(in srgb, var(--color-surface-muted), #000 6%);
+}
+
+.c-button--primary {
+    background: var(--color-brand);
+    color: var(--color-brand-contrast);
+}
+
+.c-button--outline {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+}
+
+.c-button--secondary {
+    border-color: var(--color-border);
+    background: var(--color-surface-muted);
+}
+
+.c-button--danger {
+    background: var(--color-danger);
+    color: #fff;
+}
+
+.c-button--ghost {
+    background: transparent;
+}
+
+.c-button--ghost:hover {
+    background: var(--color-surface-muted);
+}
+
+.c-button--link {
+    border: 0;
+    background: transparent;
+    color: var(--color-brand);
+    text-decoration: underline;
+    padding-inline: 0;
+}
+
+.c-button--sm {
+    min-height: 2rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.9rem;
+}
+
+.c-button--md {
+    min-height: 2.35rem;
+}
+
+.c-button--lg {
+    min-height: 2.7rem;
+    padding: 0.75rem 1.15rem;
+}
+
+.c-button--icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+}
+
+.c-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

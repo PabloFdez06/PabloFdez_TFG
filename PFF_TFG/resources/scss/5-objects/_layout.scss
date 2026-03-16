@@ -1,0 +1,30 @@
+@use '../1-settings/tokens' as t;
+@use '../2-tools/mixins' as m;
+
+.o-stack {
+    display: flex;
+    flex-direction: column;
+    gap: t.$space-4;
+}
+
+.o-inline {
+    display: flex;
+    align-items: center;
+    gap: t.$space-3;
+}
+
+.o-grid {
+    display: grid;
+    gap: t.$space-4;
+}
+
+.o-grid--2 {
+    @include m.up(md) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.o-page {
+    width: min(1160px, 100% - 2rem);
+    margin-inline: auto;
+}
