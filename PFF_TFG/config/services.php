@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    'moodle' => [
+        'base_url' => env('MOODLE_BASE_URL', env('MOODLE_URL')),
+        'cas_base' => env('MOODLE_CAS_BASE', env('CAS_BASE')),
+        'cas_login_url' => env('MOODLE_CAS_LOGIN_URL', env('MOODLE_LOGIN_URL', env('MOODLE_CAS_URL'))),
+        'cas_service_url' => env('MOODLE_CAS_SERVICE_URL', env('MOODLE_SERVICE_URL')),
+        'verify_ssl' => env('MOODLE_VERIFY_SSL', false),
+        'timeout' => (int) env('MOODLE_TIMEOUT', 20),
+        'cache_ttl_seconds' => (int) env('MOODLE_CACHE_TTL_SECONDS', 300),
+        'cache_task_course_limit' => (int) env('MOODLE_CACHE_TASK_COURSE_LIMIT', 50),
+        'cache_task_budget_seconds' => (float) env('MOODLE_CACHE_TASK_BUDGET_SECONDS', 22),
+    ],
+
 ];

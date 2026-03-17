@@ -23,6 +23,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'moodle_username',
+        'moodle_password',
+        'moodle_notification_preferences',
     ];
 
     /**
@@ -32,6 +35,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'moodle_password',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
@@ -47,6 +51,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'moodle_password' => 'encrypted',
+            'moodle_notification_preferences' => 'array',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }

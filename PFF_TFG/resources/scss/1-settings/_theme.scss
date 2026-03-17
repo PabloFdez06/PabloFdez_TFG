@@ -2,17 +2,18 @@
 
 :root {
     --font-sans: #{t.$font-sans};
-    --color-bg: #fbfcff;
+    --font-display: #{t.$font-display};
+    --color-bg: #f6f5f8;
     --color-surface: #ffffff;
-    --color-surface-muted: #f2f4fb;
-    --color-text: #12161f;
-    --color-text-muted: #5a6475;
-    --color-border: #d7deea;
-    --color-brand: #0f5fff;
+    --color-surface-muted: rgba(255, 255, 255, 0.5);
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --color-border: rgba(79, 6, 249, 0.14);
+    --color-brand: #4f06f9;
     --color-brand-contrast: #ffffff;
-    --color-danger: #b42318;
-    --color-danger-soft: #fee4e2;
-    --color-ring: #8ab6ff;
+    --color-danger: #dc2626;
+    --color-danger-soft: #fee2e2;
+    --color-ring: #a78bfa;
 }
 
 .dark {

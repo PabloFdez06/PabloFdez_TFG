@@ -1,0 +1,433 @@
+.p-asignaturas {
+    min-height: 100vh;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.p-asignaturas__container {
+    width: min(1440px, calc(100% - 48px));
+    margin-inline: auto;
+}
+
+.p-asignaturas__topbar {
+    border-bottom: 1px solid rgba(79, 6, 249, 0.1);
+    backdrop-filter: blur(6px);
+}
+
+.p-asignaturas__topbar-inner {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.p-asignaturas__brand-wrap,
+.p-asignaturas__brand,
+.p-asignaturas__nav,
+.p-asignaturas__toolbar {
+    display: flex;
+    align-items: center;
+}
+
+.p-asignaturas__brand-wrap {
+    gap: 24px;
+}
+
+.p-asignaturas__brand {
+    gap: 8px;
+}
+
+.p-asignaturas__logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: var(--color-brand);
+    display: grid;
+    place-items: center;
+    color: #fff;
+}
+
+.p-asignaturas__brand strong {
+    text-transform: uppercase;
+    letter-spacing: -0.8px;
+    font-size: 28px;
+}
+
+.p-asignaturas__nav {
+    gap: 24px;
+}
+
+.p-asignaturas__nav a {
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    padding-bottom: 4px;
+    border-bottom: 2px solid transparent;
+}
+
+.p-asignaturas__nav a.is-active {
+    color: var(--color-brand);
+    border-bottom-color: var(--color-brand);
+}
+
+.p-asignaturas__toolbar {
+    gap: 16px;
+}
+
+.p-asignaturas__search {
+    position: relative;
+}
+
+.p-asignaturas__search input {
+    width: 256px;
+    height: 36px;
+    border: 0;
+    border-radius: 4px;
+    background: rgba(79, 6, 249, 0.05);
+    padding: 0 14px 0 38px;
+    color: var(--color-text);
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.p-asignaturas__search svg {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 12px;
+    color: var(--color-text-muted);
+}
+
+.p-asignaturas__icon-btn {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--color-text);
+    display: grid;
+    place-items: center;
+}
+
+.p-asignaturas__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(79, 6, 249, 0.3);
+    background: linear-gradient(165deg, #f2d2b8 0%, #8ea69f 100%);
+    overflow: hidden;
+}
+
+.p-asignaturas__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.p-asignaturas__main {
+    padding: 24px 0 42px;
+}
+
+.p-asignaturas__hero-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+
+.p-asignaturas__hero-head small {
+    color: var(--color-brand);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.p-asignaturas__hero-head h1 {
+    margin-top: 8px;
+    font-size: 58px;
+    line-height: 0.98;
+    letter-spacing: -2.2px;
+    font-weight: 700;
+}
+
+.p-asignaturas__hero-head h1 span {
+    color: var(--color-brand);
+}
+
+.p-asignaturas__period {
+    text-align: right;
+}
+
+.p-asignaturas__period p {
+    font-size: 20px;
+    color: var(--color-text);
+}
+
+.p-asignaturas__period small {
+    font-size: 14px;
+    letter-spacing: -0.4px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.p-asignaturas__error {
+    color: #dc2626;
+    margin-bottom: 20px;
+}
+
+.p-asignaturas__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    grid-auto-flow: dense;
+}
+
+.p-asignaturas__course {
+    position: relative;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-muted);
+    min-height: 220px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: space-between;
+    grid-column: span 1;
+}
+
+.p-asignaturas__course header,
+.p-asignaturas__course footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.p-asignaturas__course header small {
+    font-family: 'Liberation Mono', monospace;
+    font-size: 10px;
+    color: rgba(79, 6, 249, 0.6);
+    transform: translateY(-4px);
+}
+
+.p-asignaturas__course h3 {
+    font-size: 28px;
+    line-height: 0.98;
+    letter-spacing: -0.9px;
+    text-transform: uppercase;
+}
+
+.p-asignaturas__course p {
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.p-asignaturas__teacher {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.p-asignaturas__tasks {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-text-muted);
+}
+
+.p-asignaturas__progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.p-asignaturas__progress strong {
+    font-size: 28px;
+}
+
+.p-asignaturas__progress span {
+    width: 148px;
+    height: 4px;
+    background: #e2e8f0;
+}
+
+.p-asignaturas__progress span i {
+    display: block;
+    height: 100%;
+    background: var(--color-brand);
+}
+
+.p-asignaturas__course footer button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(79, 6, 249, 0.2);
+    background: transparent;
+    color: var(--color-text);
+    display: grid;
+    place-items: center;
+}
+
+.p-asignaturas__index {
+    position: absolute;
+    right: 16px;
+    top: 14px;
+    font-size: 34px;
+    opacity: 0.16;
+    font-style: normal;
+    font-weight: 700;
+}
+
+.p-asignaturas__course--large {
+    grid-column: span 2;
+    min-height: 380px;
+}
+
+.p-asignaturas__course--large h3 {
+    font-size: 42px;
+    letter-spacing: -1.4px;
+}
+
+.p-asignaturas__course--small {
+    grid-column: span 1;
+    min-height: 380px;
+}
+
+.p-asignaturas__course--full {
+    grid-column: 1 / -1;
+}
+
+.p-asignaturas__course--accent {
+    background: #0d1735;
+    color: #fff;
+}
+
+.p-asignaturas__course--accent p,
+.p-asignaturas__course--accent .p-asignaturas__teacher,
+.p-asignaturas__course--accent header small {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.p-asignaturas__course--accent .p-asignaturas__progress span {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.p-asignaturas__course--accent footer button {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.p-asignaturas__empty {
+    grid-column: 1 / -1;
+    border: 1px dashed var(--color-border);
+    padding: 26px;
+}
+
+.p-asignaturas__empty h3 {
+    font-size: 30px;
+}
+
+.p-asignaturas__summary {
+    margin-top: 42px;
+    border-top: 1px solid rgba(79, 6, 249, 0.12);
+    border-bottom: 1px solid rgba(79, 6, 249, 0.12);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.p-asignaturas__summary article {
+    padding: 24px 0;
+    text-align: center;
+}
+
+.p-asignaturas__summary article:not(:last-child) {
+    border-right: 1px solid rgba(79, 6, 249, 0.12);
+}
+
+.p-asignaturas__summary strong {
+    font-size: 46px;
+    letter-spacing: -1.2px;
+}
+
+.p-asignaturas__summary small {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-size: 10px;
+}
+
+@media (max-width: 1200px) {
+    .p-asignaturas__hero-head h1 {
+        font-size: 54px;
+    }
+
+    .p-asignaturas__course h3 {
+        font-size: 30px;
+    }
+
+    .p-asignaturas__course--featured h3 {
+        font-size: 42px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .p-asignaturas__nav,
+    .p-asignaturas__search {
+        display: none;
+    }
+
+    .p-asignaturas__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .p-asignaturas__course,
+    .p-asignaturas__course--large,
+    .p-asignaturas__course--small,
+    .p-asignaturas__course--full,
+    .p-asignaturas__course--accent {
+        grid-column: span 1;
+        min-height: 220px;
+    }
+}
+
+@media (max-width: 720px) {
+    .p-asignaturas__container {
+        width: min(100%, calc(100% - 24px));
+    }
+
+    .p-asignaturas__hero-head {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .p-asignaturas__hero-head h1 {
+        font-size: 46px;
+        letter-spacing: -2px;
+    }
+
+    .p-asignaturas__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p-asignaturas__course,
+    .p-asignaturas__course--large,
+    .p-asignaturas__course--small,
+    .p-asignaturas__course--full,
+    .p-asignaturas__course--accent {
+        grid-column: span 1;
+    }
+
+    .p-asignaturas__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .p-asignaturas__summary article:not(:last-child) {
+        border-right: 0;
+        border-bottom: 1px solid rgba(79, 6, 249, 0.12);
+    }
+}
