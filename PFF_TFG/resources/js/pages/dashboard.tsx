@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { Bell, Search, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Grid2X2, LayoutList, Search, Sparkles } from 'lucide-react';
 
 type QuickCard = {
     code: string;
@@ -18,6 +18,20 @@ type TimelineItem = {
     current?: boolean;
 };
 
+type MatrixTask = {
+    title: string;
+    course: string;
+    reason: string;
+    link?: string | null;
+};
+
+type EisenhowerMatrix = {
+    doNow: MatrixTask[];
+    schedule: MatrixTask[];
+    delegate: MatrixTask[];
+    optimize: MatrixTask[];
+};
+
 type DashboardProps = {
     moodleConnected: boolean;
     studentName: string | null;
@@ -29,12 +43,16 @@ type DashboardProps = {
         highlight: string;
         remaining: string;
         priority: string;
+        link?: string | null;
     };
+    eisenhower: EisenhowerMatrix;
+    matrixExplanation: string | null;
+    matrixProvider: string;
     profileAvatarUrl: string | null;
     dashboardError: string | null;
 };
 
-export default function Dashboard({ moodleConnected, quickCards, timeline, hero, profileAvatarUrl, dashboardError }: DashboardProps) {
+export default function Dashboard({ moodleConnected, quickCards, timeline, hero, eisenhower, matrixExplanation, matrixProvider, profileAvatarUrl, dashboardError }: DashboardProps) {
     const leftColumnRef = useRef<HTMLElement | null>(null);
     const timelineContainerRef = useRef<HTMLElement | null>(null);
     const timelineListRef = useRef<HTMLOListElement | null>(null);
@@ -139,9 +157,15 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                     </section>
                                 </section>
 
-                                <button className="p-dashboard__hero-action" type="button">
-                                    Subir archivo
-                                </button>
+                                {hero.link ? (
+                                    <a className="p-dashboard__hero-action" href={hero.link} target="_blank" rel="noreferrer">
+                                        Ir a la tarea
+                                    </a>
+                                ) : (
+                                    <button className="p-dashboard__hero-action" type="button" disabled>
+                                        Sin tarea enlazada
+                                    </button>
+                                )}
                             </article>
 
                             <section className="p-dashboard__quick" aria-labelledby="quick-view-title">
@@ -151,14 +175,6 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                         <Link className="p-dashboard__quick-link" href="/asignaturas">
                                             Ver asignaturas
                                         </Link>
-                                        <section className="p-dashboard__view-btns" aria-label="Cambiar vista">
-                                            <button type="button" aria-label="Vista de cuadricula">
-                                                <Grid2X2 size={13} />
-                                            </button>
-                                            <button type="button" aria-label="Vista de lista">
-                                                <LayoutList size={13} />
-                                            </button>
-                                        </section>
                                     </section>
                                 </header>
 
@@ -210,6 +226,124 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                     )}
                                 </section>
                             </section>
+
+                            <section className="p-dashboard__matrix" aria-labelledby="matrix-title">
+                                <header className="p-dashboard__matrix-header">
+                                    <h3 id="matrix-title">Matriz de Eisenhower Academica IA</h3>
+                                    <p>
+                                        La IA prioriza tus tareas por urgencia, relevancia academica y estado real de entrega para recomendarte un
+                                        flujo de trabajo claro: hacer ahora, planificar, resolver rapido u optimizar tiempo.
+                                    </p>
+                                    <section className="p-dashboard__matrix-tools" aria-label="Herramientas de explicacion IA">
+                                        <Link className="p-dashboard__matrix-explain" href="/dashboard?explicar_matriz=1">
+                                            Obtener explicacion
+                                        </Link>
+                                        {matrixProvider !== 'ai' && (
+                                            <small className="p-dashboard__matrix-hint">La IA no esta disponible o no esta configurada.</small>
+                                        )}
+                                    </section>
+                                </header>
+
+                                {matrixExplanation && (
+                                    <article className="p-dashboard__matrix-explanation" aria-label="Explicacion IA de la matriz">
+                                        <p>{matrixExplanation}</p>
+                                    </article>
+                                )}
+
+                                <section className="p-dashboard__matrix-grid">
+                                    <article className="p-dashboard__matrix-card is-critical" aria-label="Urgente e importante">
+                                        <header>
+                                            <strong>Hacer ahora</strong>
+                                            <small>Urgente + importante</small>
+                                        </header>
+                                        <ul>
+                                            {eisenhower.doNow.map((task) => (
+                                                <li key={`do-now-${task.course}-${task.title}`}>
+                                                    <section>
+                                                        <h4>{task.title}</h4>
+                                                        <p>{task.course} · {task.reason}</p>
+                                                    </section>
+                                                    {task.link && (
+                                                        <a href={task.link} target="_blank" rel="noreferrer">
+                                                            Ir
+                                                        </a>
+                                                    )}
+                                                </li>
+                                            ))}
+                                            {eisenhower.doNow.length === 0 && <li className="is-empty">Sin tareas criticas detectadas</li>}
+                                        </ul>
+                                    </article>
+
+                                    <article className="p-dashboard__matrix-card" aria-label="No urgente e importante">
+                                        <header>
+                                            <strong>Planificar</strong>
+                                            <small>Importante + no urgente</small>
+                                        </header>
+                                        <ul>
+                                            {eisenhower.schedule.map((task) => (
+                                                <li key={`schedule-${task.course}-${task.title}`}>
+                                                    <section>
+                                                        <h4>{task.title}</h4>
+                                                        <p>{task.course} · {task.reason}</p>
+                                                    </section>
+                                                    {task.link && (
+                                                        <a href={task.link} target="_blank" rel="noreferrer">
+                                                            Ir
+                                                        </a>
+                                                    )}
+                                                </li>
+                                            ))}
+                                            {eisenhower.schedule.length === 0 && <li className="is-empty">Sin tareas para planificar</li>}
+                                        </ul>
+                                    </article>
+
+                                    <article className="p-dashboard__matrix-card" aria-label="Urgente y menos importante">
+                                        <header>
+                                            <strong>Resolver rapido</strong>
+                                            <small>Urgente + menor impacto</small>
+                                        </header>
+                                        <ul>
+                                            {eisenhower.delegate.map((task) => (
+                                                <li key={`delegate-${task.course}-${task.title}`}>
+                                                    <section>
+                                                        <h4>{task.title}</h4>
+                                                        <p>{task.course} · {task.reason}</p>
+                                                    </section>
+                                                    {task.link && (
+                                                        <a href={task.link} target="_blank" rel="noreferrer">
+                                                            Ir
+                                                        </a>
+                                                    )}
+                                                </li>
+                                            ))}
+                                            {eisenhower.delegate.length === 0 && <li className="is-empty">Sin tareas de ejecucion rapida</li>}
+                                        </ul>
+                                    </article>
+
+                                    <article className="p-dashboard__matrix-card" aria-label="No urgente y menos importante">
+                                        <header>
+                                            <strong>Optimizar</strong>
+                                            <small>Menor impacto + baja urgencia</small>
+                                        </header>
+                                        <ul>
+                                            {eisenhower.optimize.map((task) => (
+                                                <li key={`optimize-${task.course}-${task.title}`}>
+                                                    <section>
+                                                        <h4>{task.title}</h4>
+                                                        <p>{task.course} · {task.reason}</p>
+                                                    </section>
+                                                    {task.link && (
+                                                        <a href={task.link} target="_blank" rel="noreferrer">
+                                                            Ir
+                                                        </a>
+                                                    )}
+                                                </li>
+                                            ))}
+                                            {eisenhower.optimize.length === 0 && <li className="is-empty">Sin tareas para optimizar</li>}
+                                        </ul>
+                                    </article>
+                                </section>
+                            </section>
                         </section>
 
                         <aside className="p-dashboard__timeline" aria-labelledby="timeline-title" ref={timelineContainerRef}>
@@ -220,15 +354,15 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                 ref={timelineListRef}
                                 style={timelineMaxHeight ? { maxHeight: `${timelineMaxHeight}px` } : undefined}
                             >
-                                {timeline.map((event) => (
-                                    <li key={event.title} className={event.current ? 'is-current' : ''}>
+                                {timeline.map((event, index) => (
+                                    <li key={`${event.title}-${event.when}-${index}`} className={event.current ? 'is-current' : ''}>
                                         <p className="p-dashboard__timeline-time">{event.when}</p>
                                         <h4>{event.title}</h4>
                                         <p>{event.description}</p>
                                         {event.link && (
-                                            <button className="p-dashboard__timeline-link" type="button">
+                                            <a className="p-dashboard__timeline-link" href={event.link} target="_blank" rel="noreferrer">
                                                 Abrir actividad
-                                            </button>
+                                            </a>
                                         )}
                                     </li>
                                 ))}

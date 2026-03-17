@@ -5,3 +5,43 @@
 .u-hidden {
     display: none;
 }
+
+.c-global-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    background: rgba(9, 10, 16, 0.34);
+    backdrop-filter: blur(2px);
+}
+
+.c-global-loading__panel {
+    border: 1px solid rgba(79, 6, 249, 0.25);
+    background: var(--color-surface);
+    min-width: 260px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.c-global-loading__panel p {
+    color: var(--color-text);
+    font-size: 14px;
+}
+
+.c-global-loading__spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(79, 6, 249, 0.25);
+    border-top-color: var(--color-brand);
+    animation: c-global-loading-spin 800ms linear infinite;
+}
+
+@keyframes c-global-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

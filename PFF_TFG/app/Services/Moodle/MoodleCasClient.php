@@ -84,12 +84,14 @@ class MoodleCasClient
     private function initCurl()
     {
         $curl = curl_init();
+        $timeoutSeconds = max(45, (int) config('services.moodle.timeout', 20));
 
         curl_setopt_array($curl, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => (int) config('services.moodle.timeout', 20),
+            CURLOPT_TIMEOUT => $timeoutSeconds,
+            CURLOPT_CONNECTTIMEOUT => min($timeoutSeconds, 20),
             CURLOPT_SSL_VERIFYPEER => $this->shouldVerifySsl(),
             CURLOPT_SSL_VERIFYHOST => $this->shouldVerifySsl() ? 2 : 0,
             CURLOPT_COOKIEFILE => '',
@@ -110,6 +112,9 @@ class MoodleCasClient
         curl_setopt($curl, CURLOPT_HTTPGET, $method === 'GET');
         curl_setopt($curl, CURLOPT_POST, $method === 'POST');
 
+        $maxAttempts = max(1, (int) config('services.moodle.retry_attempts', 4));
+        $baseDelayMs = max(250, (int) config('services.moodle.retry_delay_ms', 1000));
+
         if ($method === 'POST') {
             curl_setopt($curl, CURLOPT_POSTFIELDS, $body ?? '');
         } else {
@@ -126,31 +131,63 @@ class MoodleCasClient
             curl_setopt($curl, CURLOPT_HTTPHEADER, []);
         }
 
-        $response = curl_exec($curl);
+        $lastError = null;
 
-        if ($response === false) {
-            throw new MoodleRequestException('cURL request failed: '.curl_error($curl));
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $response = curl_exec($curl);
+            $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            $effectiveUrl = (string) curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
+            $errno = curl_errno($curl);
+            $error = curl_error($curl);
+
+            if (is_array($trace)) {
+                $trace[] = [
+                    'step' => $traceStep,
+                    'method' => $method,
+                    'request_url' => $url,
+                    'effective_url' => $effectiveUrl,
+                    'status' => $status,
+                    'attempt' => $attempt,
+                    'response_size' => is_string($response) ? strlen($response) : 0,
+                    'curl_errno' => $errno,
+                ];
+            }
+
+            if ($response === false) {
+                $lastError = new MoodleRequestException('cURL request failed: '.$error);
+
+                if ($attempt < $maxAttempts && $this->shouldRetryCurlError($errno)) {
+                    $this->pauseRetry($attempt, $baseDelayMs);
+                    continue;
+                }
+
+                throw $lastError;
+            }
+
+            if ($status === 429 && $attempt < $maxAttempts) {
+                $this->pauseRetry($attempt, $baseDelayMs);
+                continue;
+            }
+
+            if ($status >= 400) {
+                throw new MoodleRequestException("Moodle request failed with HTTP {$status} at {$effectiveUrl}");
+            }
+
+            return $response;
         }
 
-        $effectiveUrl = (string) curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
-        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        throw $lastError ?? new MoodleRequestException('Moodle request failed after retries.');
+    }
 
-        if (is_array($trace)) {
-            $trace[] = [
-                'step' => $traceStep,
-                'method' => $method,
-                'request_url' => $url,
-                'effective_url' => $effectiveUrl,
-                'status' => $status,
-                'response_size' => strlen($response),
-            ];
-        }
+    private function shouldRetryCurlError(int $errno): bool
+    {
+        return in_array($errno, [CURLE_OPERATION_TIMEDOUT, CURLE_COULDNT_CONNECT, CURLE_RECV_ERROR, CURLE_SEND_ERROR], true);
+    }
 
-        if ($status >= 400) {
-            throw new MoodleRequestException("Moodle request failed with HTTP {$status} at {$effectiveUrl}");
-        }
-
-        return $response;
+    private function pauseRetry(int $attempt, int $baseDelayMs): void
+    {
+        $waitMs = min($baseDelayMs * $attempt, 8000);
+        usleep($waitMs * 1000);
     }
 
     private function shouldVerifySsl(): bool

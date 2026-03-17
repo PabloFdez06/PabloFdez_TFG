@@ -21,12 +21,14 @@ class MoodleUserAcademicCache
     public function getForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
-        $cacheKey = 'moodle:academic:user:'.$user->id;
+        $cacheKey = 'moodle:academic:user:v3:'.$user->id;
 
         return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
             if (function_exists('set_time_limit')) {
-                @set_time_limit(180);
+                @set_time_limit(300);
             }
+
+            @ini_set('max_execution_time', '300');
 
             $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
 
@@ -71,7 +73,7 @@ class MoodleUserAcademicCache
     public function getGradesForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
-        $cacheKey = 'moodle:grades:user:'.$user->id;
+        $cacheKey = 'moodle:grades:user:v2:'.$user->id;
 
         return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
             $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
@@ -98,26 +100,36 @@ class MoodleUserAcademicCache
                 continue;
             }
 
-            try {
-                $courseTasks = $this->academicService->getAssignmentsByCourse($session, $courseId);
-            } catch (\Throwable) {
-                continue;
-            }
+            $courseTasks = $this->academicService->getAssignmentsByCourse($session, $courseId);
 
             foreach ($courseTasks as $task) {
                 $statusText = mb_strtolower((string) ($task['estado'] ?? ''));
-                $gradeText = mb_strtolower((string) ($task['calificacion'] ?? ''));
+                $rawGradeText = trim((string) ($task['calificacion'] ?? ''));
+                $gradeText = mb_strtolower($rawGradeText);
+                $feedbackText = trim((string) ($task['retroalimentacion'] ?? ''));
                 $entregada = str_contains($statusText, 'enviado') || str_contains($statusText, 'entregado') || str_contains($statusText, 'submitted');
-                $calificada = $gradeText !== '' && $gradeText !== '-' && ! str_contains($gradeText, 'sin calificar');
+                $hasNumericGrade = $this->formatNumericGrade($rawGradeText) !== null;
+                $hasRubricGrade = $this->extractRubricGrade($rawGradeText) !== null;
+                $gradeLooksLikeFeedback = str_contains($gradeText, 'retroaliment')
+                    || str_contains($gradeText, 'feedback')
+                    || str_contains($gradeText, 'comentario')
+                    || str_contains($gradeText, 'observacion');
+                $hasFeedbackAsGrade = $this->hasMeaningfulFeedback($feedbackText)
+                    || ($gradeLooksLikeFeedback && $this->hasMeaningfulFeedback($rawGradeText));
+                $calificada = $hasNumericGrade || $hasRubricGrade || $hasFeedbackAsGrade;
 
                 $tasks[] = [
                     'asignatura_id' => $courseId,
                     'asignatura_nombre' => (string) ($course['nombre'] ?? ''),
+                    'tema' => $task['tema'] ?? null,
                     'nombre' => $task['nombre'] ?? null,
                     'fecha_entrega' => $task['fecha_entrega'] ?? null,
                     'fecha_iso' => null,
                     'estado' => $task['estado'] ?? null,
                     'calificacion' => $task['calificacion'] ?? null,
+                    'retroalimentacion' => $feedbackText !== ''
+                        ? $feedbackText
+                        : ($gradeLooksLikeFeedback ? (string) ($task['calificacion'] ?? null) : null),
                     'url' => $task['url'] ?? null,
                     'entregada' => $entregada,
                     'calificada' => $calificada,
@@ -127,6 +139,69 @@ class MoodleUserAcademicCache
         }
 
         return $tasks;
+    }
+
+    private function hasMeaningfulFeedback(string $text): bool
+    {
+        $normalized = mb_strtolower(trim($text));
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        $clean = preg_replace('/\b(sin calificar|sin calificacion|not graded|sin entregar|no entregado|no enviado|pendiente|calificaci[oó]n|grade|feedback comments?|comentarios? de retroalimentaci[oó]n)\b[:\s-]*/iu', ' ', $normalized);
+        $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
+
+        if ($clean === '') {
+            return false;
+        }
+
+        if (mb_strlen($clean) < 4) {
+            return false;
+        }
+
+        return preg_match('/[\p{L}\p{N}]{2,}/u', $clean) === 1;
+    }
+
+    private function extractRubricGrade(string $value): ?string
+    {
+        if (preg_match('/\b(SF|BN|NT|SB)\b/i', trim($value), $match) !== 1) {
+            return null;
+        }
+
+        return mb_strtoupper($match[1]);
+    }
+
+    private function formatNumericGrade(string $value): ?string
+    {
+        $normalized = trim(str_replace(',', '.', $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
+            return $this->normalizeNumberToken($match[1]).'/'.$this->normalizeNumberToken($match[2]);
+        }
+
+        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
+            return $this->normalizeNumberToken($match[1]).'/10';
+        }
+
+        return null;
+    }
+
+    private function normalizeNumberToken(string $token): string
+    {
+        $number = (float) $token;
+
+        if (fmod($number, 1.0) === 0.0) {
+            return (string) ((int) $number);
+        }
+
+        $value = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+
+        return $value;
     }
 
     private function extractProfileAvatarUrl(MoodleSession $session): ?string

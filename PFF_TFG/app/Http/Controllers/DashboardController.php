@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Ai\EisenhowerMatrixAiService;
 use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
 use App\Services\Moodle\SpanishDateParser;
@@ -16,6 +17,7 @@ class DashboardController extends Controller
     public function __construct(
         private readonly MoodleUserAcademicCache $cache,
         private readonly SpanishDateParser $dateParser,
+        private readonly EisenhowerMatrixAiService $matrixAi,
     ) {
     }
 
@@ -32,7 +34,16 @@ class DashboardController extends Controller
             'highlight' => 'Conecta Moodle para comenzar',
             'remaining' => '--',
             'priority' => 'Normal',
+            'link' => null,
         ];
+        $eisenhower = [
+            'doNow' => [],
+            'schedule' => [],
+            'delegate' => [],
+            'optimize' => [],
+        ];
+        $matrixExplanation = null;
+        $matrixProvider = 'none';
         $dashboardError = null;
         $profileAvatarUrl = null;
 
@@ -46,6 +57,12 @@ class DashboardController extends Controller
                 $quickCards = $this->buildQuickCards($courses, $tasks);
                 $timeline = $this->buildTimeline($tasks);
                 $hero = $this->buildHero($tasks);
+
+                $matrixTasks = $this->buildOpenTasksForMatrix($tasks);
+                $analysis = $this->matrixAi->analyze($matrixTasks, $request->boolean('explicar_matriz'));
+                $eisenhower = is_array($analysis['matrix'] ?? null) ? $analysis['matrix'] : $eisenhower;
+                $matrixExplanation = is_string($analysis['explanation'] ?? null) ? $analysis['explanation'] : null;
+                $matrixProvider = is_string($analysis['provider'] ?? null) ? $analysis['provider'] : 'none';
             } catch (MoodleAuthenticationException $exception) {
                 $dashboardError = $exception->getMessage();
             } catch (MoodleRequestException $exception) {
@@ -61,6 +78,9 @@ class DashboardController extends Controller
             'quickCards' => $quickCards,
             'timeline' => $timeline,
             'hero' => $hero,
+            'eisenhower' => $eisenhower,
+            'matrixExplanation' => $matrixExplanation,
+            'matrixProvider' => $matrixProvider,
             'profileAvatarUrl' => $profileAvatarUrl,
             'dashboardError' => $dashboardError,
         ]);
@@ -322,6 +342,7 @@ class DashboardController extends Controller
                 'highlight' => 'No hay tareas con fecha',
                 'remaining' => '--',
                 'priority' => 'Normal',
+                'link' => null,
             ];
         }
 
@@ -352,7 +373,53 @@ class DashboardController extends Controller
             'highlight' => (string) ($task['asignatura_nombre'] ?? 'Sin asignatura'),
             'remaining' => $remaining,
             'priority' => $priority,
+            'link' => is_string($task['url'] ?? null) && $task['url'] !== '' ? (string) $task['url'] : null,
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildOpenTasksForMatrix(array $tasks): array
+    {
+        $openTasks = [];
+
+        foreach ($tasks as $task) {
+            $status = mb_strtolower((string) ($task['estado'] ?? ''));
+            $delivered = (bool) ($task['entregada'] ?? false)
+                || (bool) ($task['calificada'] ?? false)
+                || str_contains($status, 'entregado')
+                || str_contains($status, 'enviado')
+                || str_contains($status, 'submitted');
+
+            if ($delivered) {
+                continue;
+            }
+
+            $title = trim((string) ($task['nombre'] ?? ''));
+            if ($title === '') {
+                continue;
+            }
+
+            $days = isset($task['dias_restantes']) ? (int) $task['dias_restantes'] : null;
+            $date = $this->resolveTaskDate($task);
+
+            if ($days === null && $date !== null) {
+                $days = CarbonImmutable::now()->diffInDays($date, false);
+            }
+
+            $openTasks[] = [
+                'title' => $title,
+                'course' => (string) ($task['asignatura_nombre'] ?? 'Sin asignatura'),
+                'daysRemaining' => $days,
+                'dueLabel' => is_string($task['fecha_entrega'] ?? null) ? (string) $task['fecha_entrega'] : '',
+                'status' => (string) ($task['estado'] ?? ''),
+                'link' => is_string($task['url'] ?? null) && $task['url'] !== '' ? (string) $task['url'] : null,
+            ];
+        }
+
+        return $openTasks;
     }
 
     /**

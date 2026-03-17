@@ -60,12 +60,20 @@ class AssignmentsParser
                 $link = $linkNode?->getAttribute('href');
             }
 
+            $feedbackParts = array_filter(
+                array_slice($texts, $gradeIndex + 1),
+                static fn (string $value): bool => $value !== ''
+            );
+
+            $feedback = $feedbackParts !== [] ? implode(' | ', $feedbackParts) : null;
+
             $items[] = [
                 'tema' => $section,
                 'nombre' => $texts[$nameIndex] ?? null,
                 'fecha_entrega' => $texts[$dueIndex] ?? null,
                 'estado' => $texts[$statusIndex] ?? null,
                 'calificacion' => $texts[$gradeIndex] ?? null,
+                'retroalimentacion' => $feedback,
                 'url' => $link,
             ];
         }

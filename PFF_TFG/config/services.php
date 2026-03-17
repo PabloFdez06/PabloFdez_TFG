@@ -42,9 +42,18 @@ return [
         'cas_service_url' => env('MOODLE_CAS_SERVICE_URL', env('MOODLE_SERVICE_URL')),
         'verify_ssl' => env('MOODLE_VERIFY_SSL', false),
         'timeout' => (int) env('MOODLE_TIMEOUT', 20),
+        'retry_attempts' => (int) env('MOODLE_RETRY_ATTEMPTS', 4),
+        'retry_delay_ms' => (int) env('MOODLE_RETRY_DELAY_MS', 1000),
         'cache_ttl_seconds' => (int) env('MOODLE_CACHE_TTL_SECONDS', 300),
         'cache_task_course_limit' => (int) env('MOODLE_CACHE_TASK_COURSE_LIMIT', 50),
         'cache_task_budget_seconds' => (float) env('MOODLE_CACHE_TASK_BUDGET_SECONDS', 22),
+    ],
+
+    'ai' => [
+        'base_url' => env('AI_BASE_URL', 'https://api.openai.com/v1'),
+        'api_key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL', 'gpt-4o-mini'),
+        'timeout' => (int) env('AI_TIMEOUT', 45),
     ],
 
 ];
