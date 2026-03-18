@@ -1,6 +1,7 @@
-import { Head, Link } from '@inertiajs/react';
-import { Bell, ChevronDown, ChevronUp, Search, Sparkles } from 'lucide-react';
+import { Head } from '@inertiajs/react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import AcademiaHeader from '@/components/academia-header';
 
 type SubjectTask = {
     name: string;
@@ -21,6 +22,7 @@ type SubjectCard = {
     code: string;
     subject: string;
     teacher: string;
+    image: string | null;
     gradedCount: number;
     units: SubjectUnit[];
     variant: 'large' | 'small' | 'wide' | 'compact' | 'accent';
@@ -37,6 +39,13 @@ type CalificacionesProps = {
         subjectsWithGrades: number;
     };
     pageError: string | null;
+};
+
+type FeedbackModalData = {
+    subject: string;
+    unit: string;
+    task: string;
+    feedback: string;
 };
 
 function buildVariantSequence(total: number): Array<'large' | 'small' | 'full'> {
@@ -68,6 +77,7 @@ function buildVariantSequence(total: number): Array<'large' | 'small' | 'full'> 
 
 export default function Calificaciones({ moodleConnected, profileAvatarUrl, subjectCards, summary, pageError }: CalificacionesProps) {
     const [openSubjects, setOpenSubjects] = useState<number[]>([]);
+    const [selectedFeedback, setSelectedFeedback] = useState<FeedbackModalData | null>(null);
     const variants = buildVariantSequence(subjectCards.length);
 
     const toggleSubject = (id: number) => {
@@ -79,37 +89,12 @@ export default function Calificaciones({ moodleConnected, profileAvatarUrl, subj
             <Head title="Calificaciones" />
 
             <article className="p-calificaciones">
-                <header className="p-calificaciones__topbar">
-                    <section className="p-calificaciones__container p-calificaciones__topbar-inner">
-                        <section className="p-calificaciones__brand-wrap">
-                            <section className="p-calificaciones__brand">
-                                <span className="p-calificaciones__logo" aria-hidden="true">
-                                    <Sparkles size={14} />
-                                </span>
-                                <strong>Academia</strong>
-                            </section>
-
-                            <nav className="p-calificaciones__nav" aria-label="Secciones principales">
-                                <Link href="/dashboard">Dashboard</Link>
-                                <Link href="/asignaturas">Asignaturas</Link>
-                                <Link href="/calificaciones" className="is-active">Calificaciones</Link>
-                            </nav>
-                        </section>
-
-                        <section className="p-calificaciones__toolbar" aria-label="Herramientas">
-                            <label className="p-calificaciones__search">
-                                <Search aria-hidden="true" />
-                                <input type="search" placeholder="Buscar notas..." />
-                            </label>
-                            <button className="p-calificaciones__icon-btn" type="button" aria-label="Notificaciones">
-                                <Bell size={16} />
-                            </button>
-                            <span className="p-calificaciones__avatar" aria-hidden="true">
-                                {profileAvatarUrl && <img src={profileAvatarUrl} alt="Avatar Moodle" />}
-                            </span>
-                        </section>
-                    </section>
-                </header>
+                <AcademiaHeader
+                    containerClassName="p-calificaciones__container"
+                    activePath="/calificaciones"
+                    profileAvatarUrl={profileAvatarUrl}
+                    searchPlaceholder="Buscar notas..."
+                />
 
                 <main className="p-calificaciones__container p-calificaciones__main">
                     <header className="p-calificaciones__head">
@@ -152,6 +137,7 @@ export default function Calificaciones({ moodleConnected, profileAvatarUrl, subj
                                         type="button"
                                         onClick={() => toggleSubject(card.id)}
                                         aria-expanded={isOpen}
+                                        style={card.image ? { backgroundImage: `url(${card.image})` } : undefined}
                                     >
                                         <header>
                                             <small>{card.code}</small>
@@ -184,11 +170,24 @@ export default function Calificaciones({ moodleConnected, profileAvatarUrl, subj
                                                                         ) : (
                                                                             <span className="p-calificaciones__task-name">{task.name}</span>
                                                                         )}
+                                                                        {task.feedback && (
+                                                                            <button
+                                                                                className="p-calificaciones__feedback-btn"
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    setSelectedFeedback({
+                                                                                        subject: card.subject,
+                                                                                        unit: unit.name,
+                                                                                        task: task.name,
+                                                                                        feedback: task.feedback as string,
+                                                                                    })
+                                                                                }
+                                                                            >
+                                                                                Ver retroalimentacion
+                                                                            </button>
+                                                                        )}
                                                                         <strong className={task.isNumeric ? 'p-calificaciones__grade--numeric' : 'p-calificaciones__grade--text'}>{task.grade}</strong>
                                                                     </section>
-                                                                    {task.feedback && (
-                                                                        <p className="p-calificaciones__feedback">{task.feedback}</p>
-                                                                    )}
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -214,6 +213,35 @@ export default function Calificaciones({ moodleConnected, profileAvatarUrl, subj
                             </article>
                         )}
                     </section>
+
+                    {selectedFeedback && (
+                        <section className="p-calificaciones__feedback-modal-wrapper" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+                            <button
+                                type="button"
+                                className="p-calificaciones__feedback-modal-backdrop"
+                                onClick={() => setSelectedFeedback(null)}
+                                aria-label="Cerrar modal de retroalimentacion"
+                            />
+                            <article className="p-calificaciones__feedback-modal">
+                                <header className="p-calificaciones__feedback-modal-header">
+                                    <section>
+                                        <h3 id="feedback-modal-title">{selectedFeedback.task}</h3>
+                                        <p>{selectedFeedback.subject} · {selectedFeedback.unit}</p>
+                                    </section>
+                                    <button
+                                        type="button"
+                                        className="p-calificaciones__feedback-modal-close"
+                                        onClick={() => setSelectedFeedback(null)}
+                                    >
+                                        Cerrar
+                                    </button>
+                                </header>
+                                <section className="p-calificaciones__feedback-content">
+                                    <p>{selectedFeedback.feedback}</p>
+                                </section>
+                            </article>
+                        </section>
+                    )}
                 </main>
             </article>
         </>

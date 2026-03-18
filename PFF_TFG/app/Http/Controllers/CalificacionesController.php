@@ -148,6 +148,7 @@ class CalificacionesController extends Controller
                 'code' => 'CRS-'.$courseId,
                 'subject' => (string) ($course['nombre'] ?? 'Asignatura'),
                 'teacher' => (string) ($course['docente'] ?? 'Docente no disponible'),
+                'image' => is_string($course['imagen'] ?? null) && $course['imagen'] !== '' ? (string) $course['imagen'] : null,
                 'gradedCount' => count($tasksForUnit),
                 'units' => $unitBlocks,
                 'variant' => $variants[$index % count($variants)],

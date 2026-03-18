@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, Bell, BookOpenText, Search, Sparkles } from 'lucide-react';
+import { Head } from '@inertiajs/react';
+import { ArrowRight, BookOpenText } from 'lucide-react';
+import AcademiaHeader from '@/components/academia-header';
 
 type CourseCard = {
     id: number;
@@ -71,39 +72,12 @@ export default function Asignaturas({ moodleConnected, courseCards, summary, pro
             <Head title="Asignaturas" />
 
             <article className="p-asignaturas">
-                <header className="p-asignaturas__topbar">
-                    <section className="p-asignaturas__container p-asignaturas__topbar-inner">
-                        <section className="p-asignaturas__brand-wrap">
-                            <section className="p-asignaturas__brand">
-                                <span className="p-asignaturas__logo" aria-hidden="true">
-                                    <Sparkles size={14} />
-                                </span>
-                                <strong>Academia</strong>
-                            </section>
-
-                            <nav className="p-asignaturas__nav" aria-label="Secciones principales">
-                                <Link href="/dashboard">Inicio</Link>
-                                <Link href="/asignaturas" className="is-active">
-                                    Asignaturas
-                                </Link>
-                                <Link href="/calificaciones">Calificaciones</Link>
-                            </nav>
-                        </section>
-
-                        <section className="p-asignaturas__toolbar" aria-label="Herramientas">
-                            <label className="p-asignaturas__search">
-                                <Search aria-hidden="true" />
-                                <input type="search" placeholder="BUSCAR RECURSOS" />
-                            </label>
-                            <button className="p-asignaturas__icon-btn" type="button" aria-label="Notificaciones">
-                                <Bell size={16} />
-                            </button>
-                            <span className="p-asignaturas__avatar" aria-hidden="true">
-                                {profileAvatarUrl && <img src={profileAvatarUrl} alt="Avatar Moodle" />}
-                            </span>
-                        </section>
-                    </section>
-                </header>
+                <AcademiaHeader
+                    containerClassName="p-asignaturas__container"
+                    activePath="/asignaturas"
+                    profileAvatarUrl={profileAvatarUrl}
+                    searchPlaceholder="Buscar recursos"
+                />
 
                 <main className="p-asignaturas__container p-asignaturas__main">
                     <header className="p-asignaturas__hero-head">

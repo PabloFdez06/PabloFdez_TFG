@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { Bell, Search, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import AcademiaHeader from '@/components/academia-header';
 
 type QuickCard = {
     code: string;
@@ -98,37 +98,12 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
             <Head title="Dashboard" />
 
             <article className="p-dashboard">
-                <header className="p-dashboard__topbar">
-                    <section className="p-dashboard__container">
-                        <section className="p-dashboard__left-group">
-                            <section className="p-dashboard__brand">
-                                <span className="p-dashboard__logo" aria-hidden="true">
-                                    <Sparkles size={14} />
-                                </span>
-                                <strong>Academia</strong>
-                            </section>
-
-                            <nav className="p-dashboard__nav" aria-label="Secciones principales">
-                                <Link className="is-active" href="/dashboard">Dashboard</Link>
-                                <Link href="/asignaturas">Asignaturas</Link>
-                                <Link href="/calificaciones">Calificaciones</Link>
-                            </nav>
-                        </section>
-
-                        <section className="p-dashboard__toolbar" aria-label="Herramientas">
-                            <label className="p-dashboard__search">
-                                <Search aria-hidden="true" />
-                                <input type="search" placeholder="Buscar entregables..." />
-                            </label>
-                            <button className="p-dashboard__icon-btn" type="button" aria-label="Notificaciones">
-                                <Bell size={16} />
-                            </button>
-                            <span className="p-dashboard__avatar" aria-hidden="true">
-                                {profileAvatarUrl && <img src={profileAvatarUrl} alt="Avatar Moodle" />}
-                            </span>
-                        </section>
-                    </section>
-                </header>
+                <AcademiaHeader
+                    containerClassName="p-dashboard__container"
+                    activePath="/dashboard"
+                    profileAvatarUrl={profileAvatarUrl}
+                    searchPlaceholder="Buscar entregables..."
+                />
 
                 <main className="p-dashboard__main p-dashboard__container">
                     <section className="p-dashboard__grid">
