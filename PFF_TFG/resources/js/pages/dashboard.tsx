@@ -52,17 +52,28 @@ type DashboardProps = {
     dashboardError: string | null;
 };
 
+const TIMELINE_BATCH_SIZE = 2;
+
 export default function Dashboard({ moodleConnected, quickCards, timeline, hero, eisenhower, matrixExplanation, matrixProvider, profileAvatarUrl, dashboardError }: DashboardProps) {
     const leftColumnRef = useRef<HTMLElement | null>(null);
     const timelineContainerRef = useRef<HTMLElement | null>(null);
     const timelineListRef = useRef<HTMLOListElement | null>(null);
+    const timelineActionsRef = useRef<HTMLDivElement | null>(null);
+
     const [timelineMaxHeight, setTimelineMaxHeight] = useState<number | null>(null);
+    const [visibleTimelineItems, setVisibleTimelineItems] = useState(TIMELINE_BATCH_SIZE);
+
+    const visibleTimeline = timeline.slice(0, visibleTimelineItems);
+    const hasMoreTimelineItems = visibleTimelineItems < timeline.length;
+    const canShowTimelineControls = timeline.length > TIMELINE_BATCH_SIZE;
+    const canShowLessTimelineItems = visibleTimelineItems > TIMELINE_BATCH_SIZE;
 
     useEffect(() => {
         const updateTimelineHeight = () => {
             const leftColumn = leftColumnRef.current;
             const timelineContainer = timelineContainerRef.current;
             const timelineList = timelineListRef.current;
+            const timelineActions = timelineActionsRef.current;
 
             if (!leftColumn || !timelineContainer || !timelineList) {
                 return;
@@ -70,7 +81,8 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
             const leftHeight = leftColumn.getBoundingClientRect().height;
             const timelineTopOffset = timelineList.getBoundingClientRect().top - timelineContainer.getBoundingClientRect().top;
-            const maxHeight = Math.max(180, Math.floor(leftHeight - timelineTopOffset));
+            const timelineActionsHeight = timelineActions ? timelineActions.getBoundingClientRect().height + 16 : 0;
+            const maxHeight = Math.max(180, Math.floor(leftHeight - timelineTopOffset - timelineActionsHeight));
 
             setTimelineMaxHeight(maxHeight);
         };
@@ -91,7 +103,7 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
             observer.disconnect();
             window.removeEventListener('resize', updateTimelineHeight);
         };
-    }, [timeline.length]);
+    }, [timeline.length, hasMoreTimelineItems]);
 
     return (
         <>
@@ -109,7 +121,7 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                     <section className="p-dashboard__grid">
                         <section className="p-dashboard__left-column" ref={leftColumnRef}>
                             <section className="p-dashboard__label" aria-label="Prioridad actual">
-                                <span>Urgente</span>
+                                <span>Status: Prioridad critica</span>
                                 <i aria-hidden="true" />
                             </section>
 
@@ -122,30 +134,33 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
                                 <section className="p-dashboard__hero-meta">
                                     <section className="p-dashboard__hero-kpi">
-                                        <small>Restante</small>
+                                        <small>Cierre en</small>
                                         <b className="is-brand">{hero.remaining}</b>
                                     </section>
                                     <span className="p-dashboard__hero-divider" aria-hidden="true" />
                                     <section className="p-dashboard__hero-kpi">
-                                        <small>Prioridad</small>
+                                        <small>Impacto</small>
                                         <b>{hero.priority}</b>
                                     </section>
                                 </section>
 
-                                {hero.link ? (
-                                    <a className="p-dashboard__hero-action" href={hero.link} target="_blank" rel="noreferrer">
-                                        Ir a la tarea
-                                    </a>
-                                ) : (
-                                    <button className="p-dashboard__hero-action" type="button" disabled>
-                                        Sin tarea enlazada
-                                    </button>
-                                )}
+                                <a
+                                    className="p-dashboard__hero-action"
+                                    href={hero.link && hero.link !== '' ? hero.link : '/asignaturas'}
+                                    target={hero.link && hero.link !== '' ? '_blank' : undefined}
+                                    rel={hero.link && hero.link !== '' ? 'noreferrer' : undefined}
+                                >
+                                    <span>IR A LA TAREA</span>
+                                    <span aria-hidden="true">→</span>
+                                </a>
                             </article>
 
                             <section className="p-dashboard__quick" aria-labelledby="quick-view-title">
                                 <header className="p-dashboard__quick-header">
-                                    <h3 id="quick-view-title">Vista rapida</h3>
+                                    <section>
+                                        <h3 id="quick-view-title">Vista rapida</h3>
+                                        <p className="p-dashboard__quick-subtitle">Progreso del semestre actual</p>
+                                    </section>
                                     <section className="p-dashboard__quick-actions" aria-label="Acciones de asignaturas">
                                         <Link className="p-dashboard__quick-link" href="/asignaturas">
                                             Ver asignaturas
@@ -154,7 +169,7 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                 </header>
 
                                 <section className="p-dashboard__subjects">
-                                    {quickCards.map((card) => (
+                                    {quickCards.slice(0, 4).map((card) => (
                                         <Link
                                             href="/asignaturas"
                                             key={card.code}
@@ -204,17 +219,13 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
                             <section className="p-dashboard__matrix" aria-labelledby="matrix-title">
                                 <header className="p-dashboard__matrix-header">
-                                    <h3 id="matrix-title">Matriz de Eisenhower Academica IA</h3>
-                                    <p>
-                                        La IA prioriza tus tareas por urgencia, relevancia academica y estado real de entrega para recomendarte un
-                                        flujo de trabajo claro: hacer ahora, planificar, resolver rapido u optimizar tiempo.
-                                    </p>
+                                    <h3 id="matrix-title">Matriz de Eisenhower</h3>
                                     <section className="p-dashboard__matrix-tools" aria-label="Herramientas de explicacion IA">
-                                        <Link className="p-dashboard__matrix-explain" href="/dashboard?explicar_matriz=1">
-                                            Obtener explicacion
+                                        <Link className="p-dashboard__matrix-explain" href="/dashboard?explicar_matriz=1" preserveScroll>
+                                            Generar informe IA
                                         </Link>
-                                        {matrixProvider !== 'ai' && (
-                                            <small className="p-dashboard__matrix-hint">La IA no esta disponible o no esta configurada.</small>
+                                        {matrixProvider !== 'ai' && matrixExplanation === null && (
+                                            <small className="p-dashboard__matrix-hint">Analisis offline</small>
                                         )}
                                     </section>
                                 </header>
@@ -229,14 +240,14 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                     <article className="p-dashboard__matrix-card is-critical" aria-label="Urgente e importante">
                                         <header>
                                             <strong>Hacer ahora</strong>
-                                            <small>Urgente + importante</small>
+                                            <small>Urgente</small>
                                         </header>
                                         <ul>
                                             {eisenhower.doNow.map((task) => (
                                                 <li key={`do-now-${task.course}-${task.title}`}>
                                                     <section>
                                                         <h4>{task.title}</h4>
-                                                        <p>{task.course} · {task.reason}</p>
+                                                        <p>{task.course}</p>
                                                     </section>
                                                     {task.link && (
                                                         <a href={task.link} target="_blank" rel="noreferrer">
@@ -251,15 +262,15 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
                                     <article className="p-dashboard__matrix-card" aria-label="No urgente e importante">
                                         <header>
-                                            <strong>Planificar</strong>
-                                            <small>Importante + no urgente</small>
+                                            <strong>Programar</strong>
+                                            <small>Planificar</small>
                                         </header>
                                         <ul>
                                             {eisenhower.schedule.map((task) => (
                                                 <li key={`schedule-${task.course}-${task.title}`}>
                                                     <section>
                                                         <h4>{task.title}</h4>
-                                                        <p>{task.course} · {task.reason}</p>
+                                                        <p>{task.course}</p>
                                                     </section>
                                                     {task.link && (
                                                         <a href={task.link} target="_blank" rel="noreferrer">
@@ -274,15 +285,15 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
                                     <article className="p-dashboard__matrix-card" aria-label="Urgente y menos importante">
                                         <header>
-                                            <strong>Resolver rapido</strong>
-                                            <small>Urgente + menor impacto</small>
+                                            <strong>Delegar</strong>
+                                            <small>Rapido</small>
                                         </header>
                                         <ul>
                                             {eisenhower.delegate.map((task) => (
                                                 <li key={`delegate-${task.course}-${task.title}`}>
                                                     <section>
                                                         <h4>{task.title}</h4>
-                                                        <p>{task.course} · {task.reason}</p>
+                                                        <p>{task.course}</p>
                                                     </section>
                                                     {task.link && (
                                                         <a href={task.link} target="_blank" rel="noreferrer">
@@ -297,15 +308,15 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
 
                                     <article className="p-dashboard__matrix-card" aria-label="No urgente y menos importante">
                                         <header>
-                                            <strong>Optimizar</strong>
-                                            <small>Menor impacto + baja urgencia</small>
+                                            <strong>Eliminar</strong>
+                                            <small>Reducir ruido</small>
                                         </header>
                                         <ul>
                                             {eisenhower.optimize.map((task) => (
                                                 <li key={`optimize-${task.course}-${task.title}`}>
                                                     <section>
                                                         <h4>{task.title}</h4>
-                                                        <p>{task.course} · {task.reason}</p>
+                                                        <p>{task.course}</p>
                                                     </section>
                                                     {task.link && (
                                                         <a href={task.link} target="_blank" rel="noreferrer">
@@ -322,21 +333,23 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                         </section>
 
                         <aside className="p-dashboard__timeline" aria-labelledby="timeline-title" ref={timelineContainerRef}>
-                            <h2 id="timeline-title">Linea de tiempo</h2>
-                            <p className="p-dashboard__timeline-subtitle">Tareas con entregas mas proximas</p>
+                            <header className="p-dashboard__timeline-header">
+                                <h2 id="timeline-title">Linea de tiempo</h2>
+                                <small>OCT 2023</small>
+                            </header>
                             <ol
                                 className="p-dashboard__timeline-list"
                                 ref={timelineListRef}
                                 style={timelineMaxHeight ? { maxHeight: `${timelineMaxHeight}px` } : undefined}
                             >
-                                {timeline.map((event, index) => (
+                                {visibleTimeline.map((event, index) => (
                                     <li key={`${event.title}-${event.when}-${index}`} className={event.current ? 'is-current' : ''}>
                                         <p className="p-dashboard__timeline-time">{event.when}</p>
                                         <h4>{event.title}</h4>
                                         <p>{event.description}</p>
                                         {event.link && (
                                             <a className="p-dashboard__timeline-link" href={event.link} target="_blank" rel="noreferrer">
-                                                Abrir actividad
+                                                Ir a la tarea
                                             </a>
                                         )}
                                     </li>
@@ -356,6 +369,38 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                                     </li>
                                 )}
                             </ol>
+
+                            <div className="p-dashboard__timeline-actions" ref={timelineActionsRef}>
+                                {canShowTimelineControls ? (
+                                    <>
+                                        {hasMoreTimelineItems && (
+                                            <button
+                                                className="p-dashboard__timeline-more"
+                                                type="button"
+                                                onClick={() => setVisibleTimelineItems((current) => current + TIMELINE_BATCH_SIZE)}
+                                            >
+                                                Mostrar mas
+                                            </button>
+                                        )}
+
+                                        {canShowLessTimelineItems && (
+                                            <button
+                                                className="p-dashboard__timeline-less"
+                                                type="button"
+                                                onClick={() =>
+                                                    setVisibleTimelineItems((current) => Math.max(TIMELINE_BATCH_SIZE, current - TIMELINE_BATCH_SIZE))
+                                                }
+                                            >
+                                                Mostrar menos
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Link className="p-dashboard__timeline-more p-dashboard__timeline-more--ghost" href="/asignaturas">
+                                        Calendario completo
+                                    </Link>
+                                )}
+                            </div>
                         </aside>
                     </section>
                 </main>
