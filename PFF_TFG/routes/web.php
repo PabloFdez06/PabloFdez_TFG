@@ -7,12 +7,18 @@ use App\Http\Controllers\Moodle\MoodleConnectionController;
 use App\Http\Controllers\Moodle\MoodleConsoleController;
 use App\Http\Controllers\Moodle\MoodleDataController;
 use App\Http\Controllers\Moodle\MoodlePreferencesController;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
+use Inertia\Inertia;
+use Inertia\Response;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::get('/', function (): Response|RedirectResponse {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return Inertia::render('welcome');
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
