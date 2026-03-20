@@ -16,6 +16,7 @@ type CourseCard = {
 
 type AsignaturasProps = {
     moodleConnected: boolean;
+    studentName: string | null;
     courseCards: CourseCard[];
     summary: {
         courses: number;
@@ -54,7 +55,7 @@ function buildVariantSequence(total: number): Array<'large' | 'small' | 'full'> 
     return variants;
 }
 
-export default function Asignaturas({ moodleConnected, courseCards, summary, profileAvatarUrl, pageError }: AsignaturasProps) {
+export default function Asignaturas({ moodleConnected, studentName, courseCards, summary, profileAvatarUrl, pageError }: AsignaturasProps) {
     const variantSequence = buildVariantSequence(courseCards.length);
     const isDiagonalAccent = (index: number): boolean => {
         const pair = Math.floor(index / 2);
@@ -76,7 +77,7 @@ export default function Asignaturas({ moodleConnected, courseCards, summary, pro
                     containerClassName="p-asignaturas__container"
                     activePath="/asignaturas"
                     profileAvatarUrl={profileAvatarUrl}
-                    searchPlaceholder="Buscar recursos"
+                    studentName={studentName}
                 />
 
                 <main className="p-asignaturas__container p-asignaturas__main">

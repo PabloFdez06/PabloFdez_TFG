@@ -35,6 +35,7 @@ class AsignaturasController extends Controller
         ];
         $pageError = null;
         $profileAvatarUrl = null;
+        $studentName = $user?->name;
 
         if ($moodleConnected) {
             try {
@@ -42,6 +43,9 @@ class AsignaturasController extends Controller
                 $courses = is_array($payload['courses'] ?? null) ? $payload['courses'] : [];
                 $tasks = is_array($payload['tasks'] ?? null) ? $payload['tasks'] : [];
                 $profileAvatarUrl = is_string($payload['profileAvatarUrl'] ?? null) ? $payload['profileAvatarUrl'] : null;
+                $studentName = is_string($payload['studentName'] ?? null) && trim((string) $payload['studentName']) !== ''
+                    ? (string) $payload['studentName']
+                    : $studentName;
                 $taskStats = $this->collectTaskStatsByCourse($tasks);
 
                 $courseCards = $this->buildCourseCards($courses, $taskStats);
@@ -57,6 +61,7 @@ class AsignaturasController extends Controller
 
         return Inertia::render('asignaturas', [
             'moodleConnected' => $moodleConnected,
+            'studentName' => $studentName,
             'courseCards' => $courseCards,
             'summary' => $summary,
             'profileAvatarUrl' => $profileAvatarUrl,

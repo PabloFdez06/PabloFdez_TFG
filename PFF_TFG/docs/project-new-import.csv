@@ -1,0 +1,22 @@
+Title,Status,Owner,Estimate Hours,Priority,Area,Sprint,Notes
+Implementar autenticacion completa con Fortify,Done,Pablo,14,High,Auth,S0,Evidencia en auth y settings
+Configurar flujo de seguridad 2FA y recuperacion,Done,Pablo,8,High,Auth,S0,Fortify y tests asociados
+Integrar login CAS con Moodle,Done,Pablo,16,High,Moodle,S0,Cliente CAS operativo
+Obtener asignaturas desde Moodle y mapear datos,Done,Pablo,10,High,Moodle,S0,Con tutor y metadatos
+Implementar parser de tareas por asignatura,Done,Pablo,12,High,Moodle,S0,Parser HTML de assignments
+Implementar parser de calificaciones por asignatura,Done,Pablo,12,High,Moodle,S0,Parser de grade report
+Construir pagina Dashboard con timeline y resumen,Done,Pablo,10,High,Dashboard,S0,UI y datos conectados
+Construir pagina Asignaturas con tarjetas y metricas,Done,Pablo,8,Medium,Asignaturas,S0,Layout y resumen
+Construir pagina Calificaciones con detalle expandible,Done,Pablo,10,High,Calificaciones,S0,Layout + feedback modal
+Implementar base de tests de autenticacion y parsers,Done,Pablo,10,Medium,Calidad,S0,Cobertura base existente
+Refinar diseno final de Calificaciones segun Figma,In Progress,Pablo,8,High,Calificaciones,S1,Ajustes finos visuales y responsive
+Ajustar logica de metricas y escalas de notas,In Progress,Pablo,8,High,Calificaciones,S1,Normalizacion y calculos finales
+Unificar header academico notificaciones avatar nombre Moodle,In Progress,Pablo,6,Medium,Dashboard,S1,Componente compartido
+Mejorar extraccion de perfil Moodle nombre y avatar,In Progress,Pablo,8,Medium,Moodle,S1,Robustez de datos de perfil
+Completar pruebas de flujos clave dashboard asignaturas calificaciones,To Do,Pablo,14,High,Calidad,S3,Tests funcionales de flujos principales
+Endurecer errores y fallback en integracion Moodle,To Do,Pablo,10,High,Moodle,S2,Manejo robusto de caidas y respuestas vacias
+Preparar checklist de release funcional,To Do,Pablo,6,Medium,Produccion,S4,Checklist pre release
+Configurar pipeline basico de validacion tests lint checks,To Do,Pablo,12,Medium,Produccion,S4,Automatizacion minima
+Ajustar variables de entorno y configuracion de produccion,To Do,Pablo,8,High,Produccion,S4,Config segura y estable
+Despliegue final y verificacion post produccion,To Do,Pablo,8,High,Produccion,S5,Go live y smoke test final
+Prototipado y diseño en Figma,In Progress,Pablo,6,Medium,Calificaciones,S1,Diseño completado y prototipado en progreso

@@ -1,11 +1,11 @@
 import { Link } from '@inertiajs/react';
-import { Bell, Boxes, Search } from 'lucide-react';
+import { Bell, Boxes } from 'lucide-react';
 
 type AcademiaHeaderProps = {
     containerClassName: string;
     activePath: '/dashboard' | '/asignaturas' | '/calificaciones';
     profileAvatarUrl: string | null;
-    searchPlaceholder?: string;
+    studentName: string | null;
 };
 
 type HeaderNavItem = {
@@ -23,8 +23,10 @@ export default function AcademiaHeader({
     containerClassName,
     activePath,
     profileAvatarUrl,
-    searchPlaceholder = 'Buscar recursos',
+    studentName,
 }: AcademiaHeaderProps) {
+    const displayName = (studentName ?? '').trim();
+
     return (
         <header className="c-academia-header">
             <section className={`c-academia-header__inner ${containerClassName}`}>
@@ -46,13 +48,11 @@ export default function AcademiaHeader({
                 </section>
 
                 <section className="c-academia-header__toolbar" aria-label="Herramientas">
-                    <label className="c-academia-header__search">
-                        <Search aria-hidden="true" />
-                        <input type="search" placeholder={searchPlaceholder} />
-                    </label>
                     <button className="c-academia-header__icon-btn" type="button" aria-label="Notificaciones">
                         <Bell size={16} />
                     </button>
+                    <span className="c-academia-header__toolbar-divider" aria-hidden="true" />
+                    {displayName !== '' && <span className="c-academia-header__student">{displayName}</span>}
                     <span className="c-academia-header__avatar" aria-hidden="true">
                         {profileAvatarUrl && <img src={profileAvatarUrl} alt="Avatar Moodle" />}
                     </span>

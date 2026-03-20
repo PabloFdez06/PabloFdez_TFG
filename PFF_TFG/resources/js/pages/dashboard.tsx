@@ -54,7 +54,7 @@ type DashboardProps = {
 
 const TIMELINE_BATCH_SIZE = 2;
 
-export default function Dashboard({ moodleConnected, quickCards, timeline, hero, eisenhower, matrixExplanation, matrixProvider, profileAvatarUrl, dashboardError }: DashboardProps) {
+export default function Dashboard({ moodleConnected, studentName, quickCards, timeline, hero, eisenhower, matrixExplanation, matrixProvider, profileAvatarUrl, dashboardError }: DashboardProps) {
     const leftColumnRef = useRef<HTMLElement | null>(null);
     const timelineContainerRef = useRef<HTMLElement | null>(null);
     const timelineListRef = useRef<HTMLOListElement | null>(null);
@@ -114,7 +114,7 @@ export default function Dashboard({ moodleConnected, quickCards, timeline, hero,
                     containerClassName="p-dashboard__container"
                     activePath="/dashboard"
                     profileAvatarUrl={profileAvatarUrl}
-                    searchPlaceholder="Buscar entregables..."
+                    studentName={studentName}
                 />
 
                 <main className="p-dashboard__main p-dashboard__container">

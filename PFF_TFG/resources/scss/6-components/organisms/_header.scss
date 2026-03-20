@@ -78,30 +78,6 @@
     gap: 12px;
 }
 
-.c-academia-header__search {
-    position: relative;
-}
-
-.c-academia-header__search input {
-    width: 250px;
-    height: 36px;
-    border: 0;
-    border-radius: 6px;
-    background: #e7e4ed;
-    padding: 0 12px 0 36px;
-    font-size: 12px;
-    color: #3d4155;
-    text-transform: uppercase;
-}
-
-.c-academia-header__search svg {
-    position: absolute;
-    left: 12px;
-    top: 11px;
-    width: 12px;
-    color: #8f93a4;
-}
-
 .c-academia-header__icon-btn {
     width: 32px;
     height: 32px;
@@ -111,6 +87,23 @@
     display: grid;
     place-items: center;
     cursor: pointer;
+}
+
+.c-academia-header__toolbar-divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(79, 6, 249, 0.14);
+}
+
+.c-academia-header__student {
+    max-width: 170px;
+    color: #2f3346;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
 }
 
 .c-academia-header__avatar {
@@ -130,8 +123,7 @@
 }
 
 @media (max-width: 1024px) {
-    .c-academia-header__nav,
-    .c-academia-header__search {
+    .c-academia-header__nav {
         display: none;
     }
 }
@@ -147,5 +139,9 @@
 
     .c-academia-header__brand strong {
         font-size: 25px;
+    }
+
+    .c-academia-header__student {
+        display: none;
     }
 }

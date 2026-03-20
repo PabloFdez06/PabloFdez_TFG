@@ -16,12 +16,12 @@ class MoodleUserAcademicCache
     }
 
     /**
-        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, profileAvatarUrl: ?string}
+        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string}
      */
     public function getForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
-        $cacheKey = 'moodle:academic:user:v3:'.$user->id;
+        $cacheKey = 'moodle:academic:user:v4:'.$user->id;
 
         return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
             if (function_exists('set_time_limit')) {
@@ -36,6 +36,7 @@ class MoodleUserAcademicCache
                 $courses = $this->academicService->getCourses($session, includeTutor: true);
                 $tasks = $this->collectAllTasks($session, $courses);
                 $profileAvatarUrl = $this->extractProfileAvatarUrl($session);
+                $studentName = $this->extractStudentName($session);
 
                 $normalizedTasks = array_map(function (array $task): array {
                     $fechaIso = is_string($task['fecha_iso'] ?? null) ? (string) $task['fecha_iso'] : '';
@@ -60,6 +61,7 @@ class MoodleUserAcademicCache
                     'courses' => $courses,
                     'tasks' => $normalizedTasks,
                     'profileAvatarUrl' => $profileAvatarUrl,
+                    'studentName' => $studentName,
                 ];
             } finally {
                 $session->close();
@@ -235,6 +237,54 @@ class MoodleUserAcademicCache
 
     private function fetchProfileAvatarUrlFromService(MoodleSession $session): ?string
     {
+        $userData = $this->fetchProfileUserDataFromService($session);
+        if (! is_array($userData)) {
+            return null;
+        }
+
+        $avatar = $userData['profileimageurl'] ?? $userData['profileimageurlsmall'] ?? null;
+        if (! is_string($avatar) || $avatar === '') {
+            return null;
+        }
+
+        return html_entity_decode($avatar, ENT_QUOTES | ENT_HTML5);
+    }
+
+    private function extractStudentName(MoodleSession $session): ?string
+    {
+        $userData = $this->fetchProfileUserDataFromService($session);
+        if (! is_array($userData)) {
+            return null;
+        }
+
+        $fullName = trim((string) ($userData['fullname'] ?? ''));
+
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        $firstName = trim((string) ($userData['firstname'] ?? ''));
+        if ($firstName === '') {
+            $firstName = trim((string) ($userData['firstnamephonetic'] ?? ''));
+        }
+
+        $lastName = trim((string) ($userData['lastname'] ?? ''));
+        if ($lastName === '') {
+            $lastName = trim((string) ($userData['lastnamephonetic'] ?? ''));
+        }
+
+        if ($firstName !== '' || $lastName !== '') {
+            return trim($firstName.' '.$lastName);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function fetchProfileUserDataFromService(MoodleSession $session): ?array
+    {
         if (! $session->userid) {
             return null;
         }
@@ -269,12 +319,7 @@ class MoodleUserAcademicCache
                 return null;
             }
 
-            $avatar = $userData['profileimageurl'] ?? $userData['profileimageurlsmall'] ?? null;
-            if (! is_string($avatar) || $avatar === '') {
-                return null;
-            }
-
-            return html_entity_decode($avatar, ENT_QUOTES | ENT_HTML5);
+            return $userData;
         } catch (\Throwable) {
             return null;
         }

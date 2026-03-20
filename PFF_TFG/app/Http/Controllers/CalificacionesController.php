@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
+use App\Services\Moodle\SpanishDateParser;
 use App\Services\Moodle\MoodleUserAcademicCache;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,6 +15,7 @@ class CalificacionesController extends Controller
 {
     public function __construct(
         private readonly MoodleUserAcademicCache $cache,
+        private readonly SpanishDateParser $dateParser,
     ) {
     }
 
@@ -29,6 +32,8 @@ class CalificacionesController extends Controller
         ];
         $profileAvatarUrl = null;
         $pageError = null;
+        $milestones = [];
+        $studentName = $user?->name;
 
         if ($moodleConnected) {
             try {
@@ -40,9 +45,13 @@ class CalificacionesController extends Controller
                 $profileAvatarUrl = is_string($academicPayload['profileAvatarUrl'] ?? null)
                     ? $academicPayload['profileAvatarUrl']
                     : null;
+                $studentName = is_string($academicPayload['studentName'] ?? null) && trim((string) $academicPayload['studentName']) !== ''
+                    ? (string) $academicPayload['studentName']
+                    : $studentName;
 
                 $subjectCards = $this->buildSubjectCards($courses, $tasks, is_array($gradeReport) ? $gradeReport : []);
                 $summary = $this->buildSummary($subjectCards);
+                $milestones = $this->buildMilestones($tasks);
             } catch (MoodleAuthenticationException $exception) {
                 $pageError = $exception->getMessage();
             } catch (MoodleRequestException $exception) {
@@ -54,11 +63,171 @@ class CalificacionesController extends Controller
 
         return Inertia::render('calificaciones', [
             'moodleConnected' => $moodleConnected,
+            'studentName' => $studentName,
             'profileAvatarUrl' => $profileAvatarUrl,
             'subjectCards' => $subjectCards,
             'summary' => $summary,
+            'milestones' => $milestones,
             'pageError' => $pageError,
         ]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @return array<int, array<string, string|null>>
+     */
+    private function buildMilestones(array $tasks): array
+    {
+        $now = CarbonImmutable::now();
+        $upcoming = [];
+        $recentDelivered = [];
+
+        foreach ($tasks as $task) {
+            if (! is_array($task)) {
+                continue;
+            }
+
+            $title = trim((string) ($task['nombre'] ?? ''));
+            if ($title === '') {
+                continue;
+            }
+
+            $date = $this->resolveTaskDate($task);
+            $days = isset($task['dias_restantes']) ? (int) $task['dias_restantes'] : null;
+
+            if ($days === null && $date !== null) {
+                $days = $now->diffInDays($date, false);
+            }
+
+            $status = mb_strtolower((string) ($task['estado'] ?? ''));
+            $isDelivered = (bool) ($task['entregada'] ?? false)
+                || (bool) ($task['calificada'] ?? false)
+                || str_contains($status, 'entregado')
+                || str_contains($status, 'enviado')
+                || str_contains($status, 'submitted');
+
+            $item = [
+                'title' => $title,
+                'subject' => (string) ($task['asignatura_nombre'] ?? 'Sin asignatura'),
+                'dateLabel' => $this->buildMilestoneDateLabel($task, $date, $days),
+                'link' => is_string($task['url'] ?? null) && $task['url'] !== '' ? (string) $task['url'] : null,
+                'kind' => $isDelivered ? 'entregada' : 'proxima',
+                'days' => $days,
+                'date' => $date,
+            ];
+
+            if (! $isDelivered && ($days === null || $days >= 0)) {
+                $upcoming[] = $item;
+                continue;
+            }
+
+            if ($isDelivered) {
+                $recentDelivered[] = $item;
+            }
+        }
+
+        usort($upcoming, function (array $a, array $b): int {
+            $aDays = $a['days'];
+            $bDays = $b['days'];
+
+            if ($aDays !== null && $bDays !== null) {
+                return $aDays <=> $bDays;
+            }
+
+            if ($aDays === null && $bDays === null) {
+                return 0;
+            }
+
+            return $aDays === null ? 1 : -1;
+        });
+
+        usort($recentDelivered, function (array $a, array $b) use ($now): int {
+            $aDate = $a['date'];
+            $bDate = $b['date'];
+
+            if (! $aDate && ! $bDate) {
+                return 0;
+            }
+
+            if (! $aDate) {
+                return 1;
+            }
+
+            if (! $bDate) {
+                return -1;
+            }
+
+            return abs($aDate->diffInSeconds($now, false)) <=> abs($bDate->diffInSeconds($now, false));
+        });
+
+        $selected = array_slice($upcoming, 0, 4);
+
+        if (count($selected) < 4) {
+            $selected = array_merge($selected, array_slice($recentDelivered, 0, 4 - count($selected)));
+        }
+
+        return array_map(static fn (array $item): array => [
+            'dateLabel' => (string) ($item['dateLabel'] ?? 'SIN FECHA'),
+            'title' => (string) ($item['title'] ?? 'Actividad'),
+            'subject' => (string) ($item['subject'] ?? 'Sin asignatura'),
+            'link' => is_string($item['link'] ?? null) ? (string) $item['link'] : null,
+            'kind' => (string) ($item['kind'] ?? 'proxima'),
+        ], $selected);
+    }
+
+    /**
+     * @param  array<string, mixed>  $task
+     */
+    private function resolveTaskDate(array $task): ?CarbonImmutable
+    {
+        $dateIso = (string) ($task['fecha_iso'] ?? '');
+
+        if ($dateIso !== '') {
+            try {
+                return CarbonImmutable::parse($dateIso);
+            } catch (\Throwable) {
+                // Ignore and fallback to fecha_entrega parsing.
+            }
+        }
+
+        $rawDate = is_string($task['fecha_entrega'] ?? null) ? (string) $task['fecha_entrega'] : null;
+        $parsedIso = $this->dateParser->toIso($rawDate);
+
+        if (! $parsedIso) {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($parsedIso);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $task
+     */
+    private function buildMilestoneDateLabel(array $task, ?CarbonImmutable $date, ?int $days): string
+    {
+        if ($date !== null) {
+            if ($date->isToday()) {
+                return 'HOY';
+            }
+
+            if ($date->isTomorrow()) {
+                return 'MANANA';
+            }
+
+            return mb_strtoupper($date->translatedFormat('d M'));
+        }
+
+        if ($days !== null) {
+            return $days <= 0 ? 'HOY' : 'EN '.$days.' DIAS';
+        }
+
+        $rawDate = is_string($task['fecha_entrega'] ?? null) ? trim((string) $task['fecha_entrega']) : '';
+
+        return $rawDate !== '' ? mb_strtoupper($rawDate) : 'SIN FECHA';
     }
 
     /**

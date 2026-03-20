@@ -46,6 +46,7 @@ class DashboardController extends Controller
         $matrixProvider = 'none';
         $dashboardError = null;
         $profileAvatarUrl = null;
+        $studentName = $user?->name;
 
         if ($moodleConnected) {
             try {
@@ -53,6 +54,9 @@ class DashboardController extends Controller
                 $courses = is_array($payload['courses'] ?? null) ? $payload['courses'] : [];
                 $tasks = is_array($payload['tasks'] ?? null) ? $payload['tasks'] : [];
                 $profileAvatarUrl = is_string($payload['profileAvatarUrl'] ?? null) ? $payload['profileAvatarUrl'] : null;
+                $studentName = is_string($payload['studentName'] ?? null) && trim((string) $payload['studentName']) !== ''
+                    ? (string) $payload['studentName']
+                    : $studentName;
 
                 $quickCards = $this->buildQuickCards($courses, $tasks);
                 $timeline = $this->buildTimeline($tasks);
@@ -74,7 +78,7 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'moodleConnected' => $moodleConnected,
-            'studentName' => $user?->name,
+            'studentName' => $studentName,
             'quickCards' => $quickCards,
             'timeline' => $timeline,
             'hero' => $hero,
