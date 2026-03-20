@@ -22,6 +22,7 @@ Route::get('/', function (): Response|RedirectResponse {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('dashboard/matrix', [DashboardController::class, 'updateMatrix'])->name('dashboard.matrix.update');
     Route::get('panel', [DashboardController::class, 'index'])->name('panel');
     Route::get('asignaturas', [AsignaturasController::class, 'index'])->name('asignaturas.index');
     Route::get('calificaciones', [CalificacionesController::class, 'index'])->name('calificaciones.index');

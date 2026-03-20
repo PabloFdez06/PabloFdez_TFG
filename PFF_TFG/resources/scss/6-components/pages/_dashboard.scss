@@ -300,6 +300,38 @@
     gap: 10px;
 }
 
+.p-dashboard__matrix-mode {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(79, 6, 249, 0.14);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.p-dashboard__matrix-mode-link {
+    text-decoration: none;
+    color: #4f06f9;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 700;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-right: 1px solid rgba(79, 6, 249, 0.12);
+    background: #ffffff;
+}
+
+.p-dashboard__matrix-mode-link:last-child {
+    border-right: 0;
+}
+
+.p-dashboard__matrix-mode-link.is-active {
+    background: rgba(79, 6, 249, 0.08);
+}
+
 .p-dashboard__matrix-explain {
     border: 1px solid rgba(79, 6, 249, 0.14);
     border-radius: 2px;
@@ -323,11 +355,114 @@
     letter-spacing: 0.8px;
 }
 
+.p-dashboard__matrix-hint.is-ai {
+    color: #4f06f9;
+}
+
+.p-dashboard__matrix-mode-help {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.p-dashboard__matrix-mode-help strong {
+    color: #4f06f9;
+}
+
 .p-dashboard__matrix-explanation {
     border: 1px solid rgba(79, 6, 249, 0.12);
     background: rgba(79, 6, 249, 0.04);
     border-radius: 2px;
     padding: 12px;
+}
+
+.p-dashboard__matrix-ai-form {
+    display: grid;
+    gap: 10px;
+    border: 1px solid rgba(79, 6, 249, 0.12);
+    border-radius: 2px;
+    background: #ffffff;
+    padding: 12px;
+}
+
+.p-dashboard__matrix-ai-form label {
+    color: #475569;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.p-dashboard__matrix-ai-form input[type='password'],
+.p-dashboard__matrix-ai-form textarea {
+    width: 100%;
+    border: 1px solid rgba(79, 6, 249, 0.16);
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 2px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.p-dashboard__matrix-ai-form textarea {
+    resize: vertical;
+    min-height: 110px;
+    line-height: 1.45;
+    letter-spacing: 0.1px;
+}
+
+.p-dashboard__matrix-ai-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    border: 1px solid rgba(79, 6, 249, 0.16);
+    background: rgba(79, 6, 249, 0.05);
+    border-radius: 2px;
+    padding: 10px 12px;
+    width: 100%;
+}
+
+.p-dashboard__matrix-ai-check input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    accent-color: #4f06f9;
+    flex-shrink: 0;
+}
+
+.p-dashboard__matrix-ai-check-text {
+    display: inline-block;
+    width: 100%;
+    line-height: 1.45;
+}
+
+.p-dashboard__matrix-ai-error {
+    color: #b91c1c;
+    font-size: 12px;
+}
+
+.p-dashboard__matrix-ai-form button {
+    border: 1px solid rgba(79, 6, 249, 0.2);
+    background: rgba(79, 6, 249, 0.1);
+    color: #4f06f9;
+    min-height: 36px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 14px;
+    justify-self: start;
+}
+
+.p-dashboard__matrix-ai-form button:disabled {
+    opacity: 0.65;
+    cursor: default;
 }
 
 .p-dashboard__matrix-explanation p {

@@ -10,19 +10,33 @@ class EisenhowerMatrixAiService
      * @param array<int, array<string, mixed>> $tasks
      * @return array{matrix: array<string, array<int, array<string, string|null>>>, explanation: ?string, provider: string}
      */
-    public function analyze(array $tasks, bool $includeExplanation = false): array
+    public function analyze(
+        array $tasks,
+        bool $includeExplanation = false,
+        ?string $userApiKey = null,
+        ?string $userPreferences = null,
+    ): array
     {
-        $apiKey = trim((string) config('services.ai.api_key', ''));
-        $baseUrl = rtrim((string) config('services.ai.base_url', ''), '/');
+        $apiKey = trim((string) ($userApiKey ?? config('services.ai.api_key', '')));
+        $baseUrl = rtrim((string) config('services.ai.base_url', 'https://api.openai.com/v1'), '/');
         $model = (string) config('services.ai.model', 'gpt-4o-mini');
         $timeout = max(15, (int) config('services.ai.timeout', 45));
+        $verifySsl = (bool) config('services.ai.verify_ssl', true);
+        $preferences = trim((string) ($userPreferences ?? ''));
+        $isGemini = $this->isGeminiProvider($apiKey, $baseUrl, $model);
+
+        if ($isGemini && str_contains($baseUrl, 'api.openai.com')) {
+            $baseUrl = 'https://generativelanguage.googleapis.com';
+        }
+
+        if ($isGemini && str_starts_with($model, 'gpt-')) {
+            $model = 'gemini-1.5-flash';
+        }
 
         if ($apiKey === '' || $baseUrl === '') {
             return [
                 'matrix' => $this->emptyMatrix(),
-                'explanation' => $includeExplanation
-                    ? 'No se pudo generar la explicacion con IA porque falta la configuracion del proveedor en el servidor.'
-                    : null,
+                'explanation' => 'No se pudo generar la matriz IA porque falta configurar API key o proveedor.',
                 'provider' => 'unconfigured',
             ];
         }
@@ -39,24 +53,32 @@ class EisenhowerMatrixAiService
         }, $tasks);
 
         $systemPrompt = <<<'PROMPT'
-Eres un asistente academico especializado en productividad estudiantil.
-Clasifica tareas en una matriz de Eisenhower de forma coherente para un estudiante:
+Eres un tutor academico experto en productividad universitaria y priorizacion realista.
+
+Objetivo:
+Clasificar tareas en una matriz de Eisenhower para estudiantes:
 - doNow: urgente e importante
 - schedule: importante no urgente
-- delegate: urgente de menor impacto academico
-- optimize: ni urgente ni importante
+- delegate: urgente con menor impacto academico
+- optimize: bajo impacto y baja urgencia
 
-Reglas:
-- Solo usar las tareas recibidas.
-- No inventar tareas.
-- Mantener un tono directo y util.
-- Si una tarea no tiene fecha, usar estado y contexto para decidir.
-- Responder SIEMPRE en JSON valido, sin markdown.
+Criterios de priorizacion:
+- Prioriza fechas limite cercanas, tareas vencidas y entregas calificables.
+- Da mayor peso a examenes, proyectos, entregas finales y actividades evaluables.
+- Usa curso, estado y dias restantes para desempatar.
+- Si no hay fecha, estima urgencia por estado y contexto academico.
+
+Reglas estrictas:
+- Solo usa tareas del input.
+- No inventes ni renombres tareas.
+- Maximo 3 tareas por cuadrante.
+- Devuelve SIEMPRE JSON valido, sin markdown ni texto extra.
 PROMPT;
 
         $userPrompt = json_encode([
-            'request' => 'Clasifica las tareas en la matriz y devuelve explicacion breve por tarea.',
+            'request' => 'Clasifica tareas para la matriz de Eisenhower y devuelve justificacion breve por tarea.',
             'include_explanation' => $includeExplanation,
+            'user_preferences' => $preferences !== '' ? $preferences : null,
             'tasks' => $taskPayload,
             'expected_output_schema' => [
                 'matrix' => [
@@ -70,34 +92,62 @@ PROMPT;
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         try {
-            $response = Http::withToken($apiKey)
-                ->acceptJson()
-                ->timeout($timeout)
-                ->post($baseUrl.'/chat/completions', [
-                    'model' => $model,
-                    'temperature' => 0.2,
-                    'response_format' => ['type' => 'json_object'],
-                    'messages' => [
-                        ['role' => 'system', 'content' => $systemPrompt],
-                        ['role' => 'user', 'content' => $userPrompt],
-                    ],
-                ]);
+            if ($isGemini) {
+                $request = Http::acceptJson()
+                    ->timeout($timeout)
+                    ->withOptions(['verify' => $verifySsl]);
+
+                $response = $request->post($baseUrl.'/v1beta/models/'.$model.':generateContent?key='.$apiKey, [
+                        'contents' => [
+                            [
+                                'role' => 'user',
+                                'parts' => [
+                                    ['text' => $systemPrompt."\n\n".$userPrompt],
+                                ],
+                            ],
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.1,
+                            'responseMimeType' => 'application/json',
+                        ],
+                    ]);
+            } else {
+                $request = Http::withToken($apiKey)
+                    ->acceptJson()
+                    ->timeout($timeout)
+                    ->withOptions(['verify' => $verifySsl]);
+
+                $response = $request->post($baseUrl.'/chat/completions', [
+                        'model' => $model,
+                        'temperature' => 0.1,
+                        'response_format' => ['type' => 'json_object'],
+                        'messages' => [
+                            ['role' => 'system', 'content' => $systemPrompt],
+                            ['role' => 'user', 'content' => $userPrompt],
+                        ],
+                    ]);
+            }
 
             if (! $response->ok()) {
+                $status = (int) $response->status();
+                $providerError = $this->extractProviderError($response->json());
+
                 return [
                     'matrix' => $this->emptyMatrix(),
-                    'explanation' => $includeExplanation ? 'No se pudo generar la explicacion IA en este momento.' : null,
+                    'explanation' => 'No se pudo conectar con la IA ('.$status.'). '.$providerError,
                     'provider' => 'error',
                 ];
             }
 
-            $content = (string) data_get($response->json(), 'choices.0.message.content', '');
+            $content = $isGemini
+                ? (string) data_get($response->json(), 'candidates.0.content.parts.0.text', '')
+                : (string) data_get($response->json(), 'choices.0.message.content', '');
             $decoded = json_decode($this->stripCodeBlock($content), true);
 
             if (! is_array($decoded)) {
                 return [
                     'matrix' => $this->emptyMatrix(),
-                    'explanation' => $includeExplanation ? 'La respuesta de IA no fue valida.' : null,
+                    'explanation' => 'La respuesta del proveedor IA no fue un JSON valido.',
                     'provider' => 'invalid-json',
                 ];
             }
@@ -108,15 +158,50 @@ PROMPT;
             return [
                 'matrix' => $matrix,
                 'explanation' => $explanation,
-                'provider' => 'ai',
+                'provider' => $isGemini ? 'gemini' : 'ai',
             ];
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
             return [
                 'matrix' => $this->emptyMatrix(),
-                'explanation' => $includeExplanation ? 'No se pudo contactar con el servicio de IA.' : null,
+                'explanation' => 'No se pudo contactar con el servicio de IA: '.$this->sanitizeErrorMessage($exception->getMessage()),
                 'provider' => 'exception',
             ];
         }
+    }
+
+    private function sanitizeErrorMessage(string $message): string
+    {
+        return (string) preg_replace('/key=[^&\s]+/i', 'key=[redacted]', $message);
+    }
+
+    /**
+     * @param array<string, mixed>|null $payload
+     */
+    private function extractProviderError(?array $payload): string
+    {
+        if (! is_array($payload)) {
+            return 'Respuesta no valida del proveedor.';
+        }
+
+        $message = data_get($payload, 'error.message');
+        if (is_string($message) && trim($message) !== '') {
+            return trim($message);
+        }
+
+        return 'Error de autenticacion o endpoint del proveedor.';
+    }
+
+    private function isGeminiProvider(string $apiKey, string $baseUrl, string $model): bool
+    {
+        if (str_starts_with($apiKey, 'AIza')) {
+            return true;
+        }
+
+        if (str_contains(mb_strtolower($baseUrl), 'generativelanguage.googleapis.com')) {
+            return true;
+        }
+
+        return str_starts_with(mb_strtolower($model), 'gemini');
     }
 
     private function extractExplanation(array $decoded): ?string

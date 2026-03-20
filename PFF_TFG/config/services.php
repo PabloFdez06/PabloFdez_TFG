@@ -54,6 +54,7 @@ return [
         'api_key' => env('AI_API_KEY'),
         'model' => env('AI_MODEL', 'gpt-4o-mini'),
         'timeout' => (int) env('AI_TIMEOUT', 45),
+        'verify_ssl' => env('AI_VERIFY_SSL', true),
     ],
 
 ];

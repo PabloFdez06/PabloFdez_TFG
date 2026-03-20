@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EisenhowerMatrixService;
 use App\Services\Ai\EisenhowerMatrixAiService;
 use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
 use App\Services\Moodle\SpanishDateParser;
 use App\Services\Moodle\MoodleUserAcademicCache;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +19,7 @@ class DashboardController extends Controller
     public function __construct(
         private readonly MoodleUserAcademicCache $cache,
         private readonly SpanishDateParser $dateParser,
+        private readonly EisenhowerMatrixService $matrixResolver,
         private readonly EisenhowerMatrixAiService $matrixAi,
     ) {
     }
@@ -47,6 +50,13 @@ class DashboardController extends Controller
         $dashboardError = null;
         $profileAvatarUrl = null;
         $studentName = $user?->name;
+        $matrixMode = $request->query('matrix_mode') === 'ai' ? 'ai' : 'basic';
+        $matrixRunAi = $matrixMode === 'ai' && $request->boolean('matrix_run');
+        $matrixPreferences = $matrixMode === 'ai' ? trim((string) session('matrix_ai_preferences', '')) : '';
+        $matrixIncludeExplanation = $matrixMode === 'ai'
+            ? (bool) session('matrix_include_explanation', true)
+            : false;
+        $matrixApiKey = $matrixMode === 'ai' ? trim((string) session('matrix_ai_api_key', '')) : '';
 
         if ($moodleConnected) {
             try {
@@ -63,10 +73,37 @@ class DashboardController extends Controller
                 $hero = $this->buildHero($tasks);
 
                 $matrixTasks = $this->buildOpenTasksForMatrix($tasks);
-                $analysis = $this->matrixAi->analyze($matrixTasks, $request->boolean('explicar_matriz'));
-                $eisenhower = is_array($analysis['matrix'] ?? null) ? $analysis['matrix'] : $eisenhower;
-                $matrixExplanation = is_string($analysis['explanation'] ?? null) ? $analysis['explanation'] : null;
-                $matrixProvider = is_string($analysis['provider'] ?? null) ? $analysis['provider'] : 'none';
+                if ($matrixMode === 'basic') {
+                    $eisenhower = $this->matrixResolver->classify($matrixTasks);
+                    $matrixProvider = 'rule-based';
+                } else {
+                    $eisenhower = [
+                        'doNow' => [],
+                        'schedule' => [],
+                        'delegate' => [],
+                        'optimize' => [],
+                    ];
+                    $matrixProvider = 'ai-idle';
+                }
+
+                if ($matrixRunAi) {
+                    if ($matrixApiKey === '') {
+                        $matrixProvider = 'missing-api-key';
+                        $matrixExplanation = 'Debes introducir una API key valida para generar la matriz con IA.';
+                    } else {
+                        $analysis = $this->matrixAi->analyze(
+                            $matrixTasks,
+                            $matrixIncludeExplanation,
+                            $matrixApiKey,
+                            $matrixPreferences,
+                        );
+                        $aiMatrix = is_array($analysis['matrix'] ?? null) ? $analysis['matrix'] : [];
+                        $eisenhower = $aiMatrix;
+
+                        $matrixExplanation = is_string($analysis['explanation'] ?? null) ? $analysis['explanation'] : null;
+                        $matrixProvider = is_string($analysis['provider'] ?? null) ? $analysis['provider'] : 'none';
+                    }
+                }
             } catch (MoodleAuthenticationException $exception) {
                 $dashboardError = $exception->getMessage();
             } catch (MoodleRequestException $exception) {
@@ -85,9 +122,56 @@ class DashboardController extends Controller
             'eisenhower' => $eisenhower,
             'matrixExplanation' => $matrixExplanation,
             'matrixProvider' => $matrixProvider,
+            'matrixMode' => $matrixMode,
+            'matrixPreferences' => $matrixPreferences,
+            'matrixIncludeExplanation' => $matrixIncludeExplanation,
             'profileAvatarUrl' => $profileAvatarUrl,
             'dashboardError' => $dashboardError,
         ]);
+    }
+
+    public function updateMatrix(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'matrix_mode' => ['required', 'in:basic,ai'],
+            'ai_api_key' => ['nullable', 'string', 'max:400'],
+            'matrix_preferences' => ['nullable', 'string', 'max:1600'],
+            'matrix_include_explanation' => ['nullable', 'boolean'],
+        ]);
+
+        $mode = (string) ($validated['matrix_mode'] ?? 'basic');
+
+        if ($mode === 'basic') {
+            $request->session()->forget([
+                'matrix_ai_api_key',
+                'matrix_ai_preferences',
+                'matrix_include_explanation',
+            ]);
+
+            return redirect()->route('dashboard', ['matrix_mode' => 'basic']);
+        }
+
+        $apiKey = trim((string) ($validated['ai_api_key'] ?? ''));
+        if ($apiKey === '') {
+            $apiKey = trim((string) $request->session()->get('matrix_ai_api_key', ''));
+        }
+
+        $preferences = trim((string) ($validated['matrix_preferences'] ?? ''));
+        $includeExplanation = (bool) ($validated['matrix_include_explanation'] ?? true);
+
+        if ($apiKey === '') {
+            return redirect()
+                ->route('dashboard', ['matrix_mode' => 'ai'])
+                ->withErrors([
+                    'ai_api_key' => 'Sin API key no se puede ejecutar la matriz con IA.',
+                ]);
+        }
+
+        $request->session()->put('matrix_ai_api_key', $apiKey);
+        $request->session()->put('matrix_ai_preferences', $preferences);
+        $request->session()->put('matrix_include_explanation', $includeExplanation);
+
+        return redirect()->route('dashboard', ['matrix_mode' => 'ai', 'matrix_run' => 1]);
     }
 
     /**
@@ -477,5 +561,23 @@ class DashboardController extends Controller
         });
 
         return $tasks[0] ?? null;
+    }
+
+    /**
+     * @param array<string, mixed> $matrix
+     */
+    private function matrixHasTasks(array $matrix): bool
+    {
+        $quadrants = ['doNow', 'schedule', 'delegate', 'optimize'];
+
+        foreach ($quadrants as $quadrant) {
+            $tasks = $matrix[$quadrant] ?? null;
+
+            if (is_array($tasks) && $tasks !== []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AcademiaHeader from '@/components/academia-header';
 
@@ -48,13 +48,30 @@ type DashboardProps = {
     eisenhower: EisenhowerMatrix;
     matrixExplanation: string | null;
     matrixProvider: string;
+    matrixMode: 'basic' | 'ai';
+    matrixPreferences: string;
+    matrixIncludeExplanation: boolean;
     profileAvatarUrl: string | null;
     dashboardError: string | null;
 };
 
 const TIMELINE_BATCH_SIZE = 2;
 
-export default function Dashboard({ moodleConnected, studentName, quickCards, timeline, hero, eisenhower, matrixExplanation, matrixProvider, profileAvatarUrl, dashboardError }: DashboardProps) {
+export default function Dashboard({
+    moodleConnected,
+    studentName,
+    quickCards,
+    timeline,
+    hero,
+    eisenhower,
+    matrixExplanation,
+    matrixProvider,
+    matrixMode,
+    matrixPreferences,
+    matrixIncludeExplanation,
+    profileAvatarUrl,
+    dashboardError,
+}: DashboardProps) {
     const leftColumnRef = useRef<HTMLElement | null>(null);
     const timelineContainerRef = useRef<HTMLElement | null>(null);
     const timelineListRef = useRef<HTMLOListElement | null>(null);
@@ -67,6 +84,43 @@ export default function Dashboard({ moodleConnected, studentName, quickCards, ti
     const hasMoreTimelineItems = visibleTimelineItems < timeline.length;
     const canShowTimelineControls = timeline.length > TIMELINE_BATCH_SIZE;
     const canShowLessTimelineItems = visibleTimelineItems > TIMELINE_BATCH_SIZE;
+    const isAiMode = matrixMode === 'ai';
+    const matrixStateLabel = (() => {
+        if (!isAiMode) {
+            return 'Estado: Logica base activa';
+        }
+
+        if (matrixProvider === 'ai') {
+            return 'Estado: IA activa';
+        }
+
+        if (matrixProvider === 'gemini') {
+            return 'Estado: Gemini activa';
+        }
+
+        if (matrixProvider === 'missing-api-key') {
+            return 'Estado: IA seleccionada (falta API key)';
+        }
+
+        if (matrixProvider === 'ai-idle') {
+            return 'Estado: IA seleccionada (pendiente de ejecutar)';
+        }
+
+        return `Estado: IA seleccionada (${matrixProvider})`;
+    })();
+
+    const { data, setData, post, processing, errors } = useForm({
+        matrix_mode: matrixMode,
+        ai_api_key: '',
+        matrix_preferences: matrixPreferences ?? '',
+        matrix_include_explanation: matrixIncludeExplanation,
+    });
+
+    useEffect(() => {
+        setData('matrix_mode', matrixMode);
+        setData('matrix_preferences', matrixPreferences ?? '');
+        setData('matrix_include_explanation', matrixIncludeExplanation);
+    }, [matrixMode, matrixPreferences, matrixIncludeExplanation, setData]);
 
     useEffect(() => {
         const updateTimelineHeight = () => {
@@ -221,14 +275,92 @@ export default function Dashboard({ moodleConnected, studentName, quickCards, ti
                                 <header className="p-dashboard__matrix-header">
                                     <h3 id="matrix-title">Matriz de Eisenhower</h3>
                                     <section className="p-dashboard__matrix-tools" aria-label="Herramientas de explicacion IA">
-                                        <Link className="p-dashboard__matrix-explain" href="/dashboard?explicar_matriz=1" preserveScroll>
-                                            Generar informe IA
-                                        </Link>
-                                        {matrixProvider !== 'ai' && matrixExplanation === null && (
-                                            <small className="p-dashboard__matrix-hint">Analisis offline</small>
-                                        )}
+                                        <nav className="p-dashboard__matrix-mode" aria-label="Selector de modo de matriz">
+                                            <Link
+                                                className={['p-dashboard__matrix-mode-link', !isAiMode ? 'is-active' : ''].filter(Boolean).join(' ')}
+                                                href="/dashboard?matrix_mode=basic"
+                                                preserveScroll
+                                            >
+                                                Logica base
+                                            </Link>
+                                            <Link
+                                                className={['p-dashboard__matrix-mode-link', isAiMode ? 'is-active' : ''].filter(Boolean).join(' ')}
+                                                href="/dashboard?matrix_mode=ai"
+                                                preserveScroll
+                                            >
+                                                IA asistida
+                                            </Link>
+                                        </nav>
+
+                                        <small
+                                            className={['p-dashboard__matrix-hint', matrixProvider === 'ai' || matrixProvider === 'gemini' ? 'is-ai' : '']
+                                                .filter(Boolean)
+                                                .join(' ')}
+                                        >
+                                            {matrixStateLabel}
+                                        </small>
                                     </section>
                                 </header>
+
+                                <p className="p-dashboard__matrix-mode-help">
+                                    Usa <strong>Logica base</strong> para una priorizacion instantanea y estable. Cambia a <strong>IA asistida</strong> si quieres
+                                    feedback personalizado por asignatura, contexto o preferencias concretas.
+                                </p>
+
+                                {isAiMode && (
+                                    <form
+                                        className="p-dashboard__matrix-ai-form"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            post('/dashboard/matrix', {
+                                                preserveState: true,
+                                                preserveScroll: true,
+                                            });
+                                        }}
+                                    >
+                                        <input type="hidden" name="matrix_mode" value={data.matrix_mode} />
+
+                                        <label htmlFor="matrix-ai-api-key">API key IA</label>
+                                        <input
+                                            id="matrix-ai-api-key"
+                                            name="ai_api_key"
+                                            type="password"
+                                            value={data.ai_api_key}
+                                            onChange={(event) => setData('ai_api_key', event.target.value)}
+                                            placeholder="Introduce tu API key"
+                                            autoComplete="off"
+                                        />
+
+                                        <label htmlFor="matrix-ai-preferences">Enfoque personalizado</label>
+                                        <textarea
+                                            id="matrix-ai-preferences"
+                                            name="matrix_preferences"
+                                            value={data.matrix_preferences}
+                                            onChange={(event) => setData('matrix_preferences', event.target.value)}
+                                            rows={3}
+                                            placeholder="Ejemplo: prioriza Algebra y tareas evaluables de esta semana"
+                                        />
+
+                                        <label className="p-dashboard__matrix-ai-check" htmlFor="matrix-ai-explanation">
+                                            <input
+                                                id="matrix-ai-explanation"
+                                                name="matrix_include_explanation"
+                                                type="checkbox"
+                                                checked={data.matrix_include_explanation}
+                                                onChange={(event) => setData('matrix_include_explanation', event.target.checked)}
+                                            />
+                                            <span className="p-dashboard__matrix-ai-check-text">Incluir feedback explicativo y recomendaciones por cuadrante</span>
+                                        </label>
+
+                                        {(errors.ai_api_key || errors.matrix_preferences) && (
+                                            <p className="p-dashboard__matrix-ai-error">{errors.ai_api_key || errors.matrix_preferences}</p>
+                                        )}
+
+                                        <button type="submit" disabled={processing}>
+                                            {processing ? 'Analizando...' : 'Iniciar analisis IA'}
+                                        </button>
+                                    </form>
+                                )}
 
                                 {matrixExplanation && (
                                     <article className="p-dashboard__matrix-explanation" aria-label="Explicacion IA de la matriz">
