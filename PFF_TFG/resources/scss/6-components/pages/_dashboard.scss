@@ -707,6 +707,48 @@
     background: transparent;
 }
 
+.dark .p-dashboard {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.dark .p-dashboard__hero,
+.dark .p-dashboard__subject,
+.dark .p-dashboard__matrix,
+.dark .p-dashboard__timeline,
+.dark .p-dashboard__timeline-more,
+.dark .p-dashboard__timeline-less,
+.dark .p-dashboard__timeline-link {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+.dark .p-dashboard__hero-code,
+.dark .p-dashboard__hero-kpi small,
+.dark .p-dashboard__quick-subtitle,
+.dark .p-dashboard__timeline-time,
+.dark .p-dashboard__timeline-header small,
+.dark .p-dashboard__timeline-list p {
+    color: var(--color-text-muted);
+}
+
+.dark .p-dashboard__hero-divider,
+.dark .p-dashboard__timeline-list li {
+    border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+.dark .p-dashboard__timeline-list li::before {
+    background: var(--color-bg);
+    border-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+}
+
+.dark .p-dashboard__quick-link {
+    border-color: var(--color-border);
+    color: var(--color-brand);
+    background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+}
+
 @media (max-width: 1440px) {
     .p-dashboard__main {
         padding-top: 42px;

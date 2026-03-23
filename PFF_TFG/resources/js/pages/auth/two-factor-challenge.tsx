@@ -54,7 +54,8 @@ export default function TwoFactorChallenge() {
 
             <div className="c-auth-form-wrap">
                 <Form
-                    {...store.form()}
+                    method="post"
+                    action={store().url}
                     className="c-auth-form"
                     resetOnError
                     resetOnSuccess={!showRecoveryInput}

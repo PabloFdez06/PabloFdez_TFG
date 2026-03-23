@@ -270,6 +270,42 @@
     display: grid;
     gap: 14px;
 }
+.dark .p-calificaciones {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+.dark .p-calificaciones__head h1,
+.dark .p-calificaciones__metric strong,
+.dark .p-calificaciones__featured-head h2,
+.dark .p-calificaciones__task-name,
+.dark .p-calificaciones__feedback-modal-header h3 {
+    color: var(--color-text);
+}
+.dark .p-calificaciones__head p,
+.dark .p-calificaciones__metric small,
+.dark .p-calificaciones__metric p,
+.dark .p-calificaciones__featured-head p,
+.dark .p-calificaciones__feedback-content,
+.dark .p-calificaciones__no-grades,
+.dark .p-calificaciones__empty {
+    color: var(--color-text-muted);
+}
+.dark .p-calificaciones__featured,
+.dark .p-calificaciones__subject-item,
+.dark .p-calificaciones__details,
+.dark .p-calificaciones__feedback-modal {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+}
+.dark .p-calificaciones__summary,
+.dark .p-calificaciones__metric:not(:last-child),
+.dark .p-calificaciones__task-row,
+.dark .p-calificaciones__feedback-modal-header {
+    border-color: var(--color-border);
+}
+.dark .p-calificaciones__progress {
+    background: color-mix(in srgb, var(--color-text-muted) 34%, transparent);
+}
 
 .p-calificaciones__subject-item {
     border: 1px solid transparent;

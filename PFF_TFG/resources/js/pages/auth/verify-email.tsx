@@ -22,7 +22,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                 </div>
             )}
 
-            <Form {...send.form()} className="c-auth-form c-auth-form--inline">
+            <Form method="post" action={send().url} className="c-auth-form c-auth-form--inline">
                 {({ processing }) => (
                     <>
                         <Button

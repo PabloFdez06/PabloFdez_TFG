@@ -1,262 +1,574 @@
-import { Transition } from '@headlessui/react';
-import { Form, Head } from '@inertiajs/react';
-import { ShieldCheck } from 'lucide-react';
-import { useRef, useState } from 'react';
-import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
-import Heading from '@/components/heading';
+import { Form, Head, router, usePage } from '@inertiajs/react';
+import { BellRing, Mail, Monitor, Moon, Settings, Sun, X } from 'lucide-react';
+import { useState } from 'react';
+import { connect } from '@/actions/App/Http/Controllers/Moodle/MoodleConnectionController';
 import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
-import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
-import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
-import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
-import { edit } from '@/routes/security';
+import { Input } from '@/components/ui/input';
+import { useAppearance } from '@/hooks/use-appearance';
+import type { Appearance } from '@/hooks/use-appearance';
 import { disable, enable } from '@/routes/two-factor';
-import type { BreadcrumbItem } from '@/types';
+
+type UserProfile = {
+    fullName: string | null;
+    email: string | null;
+    course: string | null;
+    academicYear: string | null;
+    avatarUrl: string | null;
+};
+
+type SyncStatus = {
+    lastSyncLabel: string | null;
+    message: string | null;
+};
+
+type Preferences = {
+    '48h_antes': boolean;
+    '24h_antes': boolean;
+    mismo_dia: boolean;
+    recordatorio_personalizado: boolean;
+    recordatorio_personalizado_minutos: number;
+    email: boolean;
+    push: boolean;
+};
+
+type CacheConfig = {
+    asignaturasMinutes: number;
+    tareasMinutes: number;
+};
 
 type Props = {
+    moodleConnected: boolean;
+    profile: UserProfile;
+    syncStatus: SyncStatus;
+    preferences: Preferences;
+    cacheConfig: CacheConfig;
     canManageTwoFactor?: boolean;
-    requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
 };
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Security settings',
-        href: edit(),
-    },
-];
+type PreferenceToggleProps = {
+    id: string;
+    label: string;
+    description: string;
+    checked: boolean;
+    disabled?: boolean;
+    icon?: 'mail' | 'push';
+    onToggle: (value: boolean) => void;
+};
+
+function PreferenceToggle({
+    id,
+    label,
+    description,
+    checked,
+    disabled = false,
+    icon,
+    onToggle,
+}: PreferenceToggleProps) {
+    return (
+        <article className="p-settings__toggle-row">
+            <section className="p-settings__toggle-copy">
+                <h4>
+                    {icon === 'mail' && <Mail size={14} aria-hidden="true" />}
+                    {icon === 'push' && <BellRing size={14} aria-hidden="true" />}
+                    <span>{label}</span>
+                </h4>
+                <p>{description}</p>
+            </section>
+
+            <button
+                id={id}
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+                className={[
+                    'p-settings__switch',
+                    checked ? 'is-on' : '',
+                    disabled ? 'is-disabled' : '',
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
+                onClick={() => {
+                    if (!disabled) {
+                        onToggle(!checked);
+                    }
+                }}
+                disabled={disabled}
+            >
+                <span className="p-settings__switch-thumb" aria-hidden="true" />
+            </button>
+        </article>
+    );
+}
 
 export default function Security({
+    moodleConnected,
+    profile,
+    syncStatus,
+    preferences,
+    cacheConfig,
     canManageTwoFactor = false,
-    requiresConfirmation = false,
     twoFactorEnabled = false,
 }: Props) {
-    const passwordInput = useRef<HTMLInputElement>(null);
-    const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const [showReconnectForm, setShowReconnectForm] = useState(false);
+    const flash = (usePage().props.flash ?? {}) as { success?: string; error?: string };
+    const { appearance, updateAppearance } = useAppearance();
 
-    const {
-        qrCodeSvg,
-        hasSetupData,
-        manualSetupKey,
-        clearSetupData,
-        fetchSetupData,
-        recoveryCodesList,
-        fetchRecoveryCodes,
-        errors,
-    } = useTwoFactorAuth();
-    const [showSetupModal, setShowSetupModal] = useState<boolean>(false);
+    const [preferencesData, setPreferencesData] = useState<Preferences>(preferences);
+    const [processing, setProcessing] = useState(false);
+
+    const appearanceOptions: Array<{ value: Appearance; label: string; icon: typeof Sun }> = [
+        { value: 'light', label: 'Claro', icon: Sun },
+        { value: 'dark', label: 'Oscuro', icon: Moon },
+        { value: 'system', label: 'Sistema', icon: Monitor },
+    ];
+
+    const persistPreference = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
+        const next = {
+            ...preferencesData,
+            [key]: value,
+        };
+
+        setPreferencesData(next);
+        setProcessing(true);
+
+        router.post('/settings/security/preferences', next, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const profileInitial = (profile.fullName ?? 'Usuario').trim().charAt(0).toUpperCase();
+
+    const closeSettings = () => {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            window.history.back();
+
+            return;
+        }
+
+        router.visit('/dashboard');
+    };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Security settings" />
+        <>
+            <Head title="Configuración" />
 
-            <h1 className="">Security settings</h1>
+            <main className="p-settings" aria-labelledby="settings-title">
+                <header className="p-settings__page-header" aria-label="Cabecera de configuración">
+                    <section className="p-settings__page-header-brand">
+                        <span className="p-settings__page-header-icon" aria-hidden="true">
+                            <Settings size={14} />
+                        </span>
+                        <p>Configuración</p>
+                    </section>
 
-            <SettingsLayout>
-                <div className="">
-                    <Heading
-                        variant="small"
-                        title="Update password"
-                        description="Ensure your account is using a long, random password to stay secure"
-                    />
+                    <section className="p-settings__page-header-actions">
+                        <button type="button" className="p-settings__close" onClick={closeSettings} aria-label="Cerrar">
+                            <X size={13} />
+                        </button>
+                    </section>
+                </header>
 
-                    <Form
-                        {...SecurityController.update.form()}
-                        options={{
-                            preserveScroll: true,
-                        }}
-                        resetOnError={[
-                            'password',
-                            'password_confirmation',
-                            'current_password',
-                        ]}
-                        resetOnSuccess
-                        onError={(errors) => {
-                            if (errors.password) {
-                                passwordInput.current?.focus();
-                            }
+                <header className="p-settings__hero">
+                    <section className="p-settings__hero-main">
+                        <p className="p-settings__eyebrow">Ajustes del sistema</p>
+                        <h1 id="settings-title" className="p-settings__title">
+                            PERFIL<span>.</span>
+                        </h1>
+                        <p className="p-settings__description">Gestión de identidad académica y sincronización de datos.</p>
+                    </section>
 
-                            if (errors.current_password) {
-                                currentPasswordInput.current?.focus();
-                            }
-                        }}
-                        className=""
-                    >
-                        {({ errors, processing, recentlySuccessful }) => (
-                            <>
-                                <div className="">
-                                    <Label htmlFor="current_password">
-                                        Current password
-                                    </Label>
+                    <section className="p-settings__hero-side">
+                        <figure className="p-settings__avatar" aria-label="Avatar de usuario">
+                            {profile.avatarUrl ? (
+                                <img src={profile.avatarUrl} alt="Avatar del usuario" />
+                            ) : (
+                                <span>{profileInitial || 'U'}</span>
+                            )}
+                        </figure>
+                    </section>
+                </header>
 
-                                    <PasswordInput
-                                        id="current_password"
-                                        ref={currentPasswordInput}
-                                        name="current_password"
-                                        className=""
-                                        autoComplete="current-password"
-                                        placeholder="Current password"
-                                    />
+                {(flash.success || flash.error || syncStatus.message) && (
+                    <section className="p-settings__flash" aria-live="polite">
+                        <p className={flash.error || syncStatus.message ? 'is-error' : 'is-success'}>
+                            {flash.error ?? syncStatus.message ?? flash.success}
+                        </p>
+                    </section>
+                )}
 
-                                    <InputError
-                                        message={errors.current_password}
-                                    />
+                <section className="p-settings__grid">
+                    <section className="p-settings__grid-row">
+                        <article className="p-settings__section">
+                            <header className="p-settings__section-header">
+                                <h2>Informacion de Usuario</h2>
+                                <span aria-hidden="true" />
+                            </header>
+
+                            <dl className="p-settings__profile-grid">
+                                <div className="p-settings__profile-item">
+                                    <dt>Nombre completo</dt>
+                                    <dd>{profile.fullName ?? 'No disponible'}</dd>
                                 </div>
-
-                                <div className="">
-                                    <Label htmlFor="password">
-                                        New password
-                                    </Label>
-
-                                    <PasswordInput
-                                        id="password"
-                                        ref={passwordInput}
-                                        name="password"
-                                        className=""
-                                        autoComplete=""
-                                        placeholder="New password"
-                                    />
-
-                                    <InputError message={errors.password} />
+                                <div className="p-settings__profile-item">
+                                    <dt>Correo institucional</dt>
+                                    <dd>{profile.email ?? 'No disponible'}</dd>
                                 </div>
-
-                                <div className="">
-                                    <Label htmlFor="password_confirmation">
-                                        Confirm password
-                                    </Label>
-
-                                    <PasswordInput
-                                        id="password_confirmation"
-                                        name="password_confirmation"
-                                        className=""
-                                        autoComplete=""
-                                        placeholder="Confirm password"
-                                    />
-
-                                    <InputError
-                                        message={errors.password_confirmation}
-                                    />
+                                <div className="p-settings__profile-item">
+                                    <dt>Curso actual</dt>
+                                    <dd>{profile.course ?? 'No disponible'}</dd>
                                 </div>
-
-                                <div className="">
-                                    <Button
-                                        disabled={processing}
-                                        data-test="update-password-button"
-                                    >
-                                        Save password
-                                    </Button>
-
-                                    <Transition
-                                        show={recentlySuccessful}
-                                        enter="transition ease-in-out"
-                                        enterFrom=""
-                                        leave="transition ease-in-out"
-                                        leaveTo=""
-                                    >
-                                        <p className="">
-                                            Saved
-                                        </p>
-                                    </Transition>
+                                <div className="p-settings__profile-item">
+                                    <dt>Año académico</dt>
+                                    <dd>{profile.academicYear ?? 'No disponible'}</dd>
                                 </div>
-                            </>
-                        )}
-                    </Form>
-                </div>
+                            </dl>
 
-                {canManageTwoFactor && (
-                    <div className="">
-                        <Heading
-                            variant="small"
-                            title="Two-factor authentication"
-                            description="Manage your two-factor authentication settings"
-                        />
-                        {twoFactorEnabled ? (
-                            <div className="">
-                                <p className="">
-                                    You will be prompted for a secure, random
-                                    pin during login, which you can retrieve
-                                    from the TOTP-supported application on your
-                                    phone.
+                            <section className="p-settings__appearance-card" aria-label="Apariencia de la aplicación">
+                                <p className="p-settings__appearance-title">Apariencia de la app</p>
+                                <p className="p-settings__appearance-description">
+                                    Elige cómo quieres visualizar la interfaz en toda la aplicación.
                                 </p>
 
-                                <div className="">
-                                    <Form {...disable.form()}>
-                                        {({ processing }) => (
-                                            <Button
-                                                variant="destructive"
-                                                type="submit"
-                                                disabled={processing}
-                                            >
-                                                Disable 2FA
-                                            </Button>
-                                        )}
-                                    </Form>
-                                </div>
+                                <nav className="p-settings__appearance-options" aria-label="Selector de apariencia">
+                                    {appearanceOptions.map(({ value, label, icon: Icon }) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            className={[
+                                                'p-settings__appearance-option',
+                                                appearance === value ? 'is-active' : '',
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' ')}
+                                            onClick={() => updateAppearance(value)}
+                                            aria-pressed={appearance === value}
+                                        >
+                                            <Icon size={14} aria-hidden="true" />
+                                            <span>{label}</span>
+                                        </button>
+                                    ))}
+                                </nav>
+                            </section>
+                        </article>
 
-                                <TwoFactorRecoveryCodes
-                                    recoveryCodesList={recoveryCodesList}
-                                    fetchRecoveryCodes={fetchRecoveryCodes}
-                                    errors={errors}
+                        <article className="p-settings__section p-settings__section--right">
+                            <header className="p-settings__section-header">
+                                <h2>Recordatorios por Tiempo</h2>
+                                <span aria-hidden="true" />
+                            </header>
+
+                            <section className="p-settings__toggles">
+                                <PreferenceToggle
+                                    id="reminder-48"
+                                    label="48 horas antes"
+                                    description="Recibir notificación dos días antes de la fecha límite"
+                                    checked={preferencesData['48h_antes']}
+                                    disabled={processing}
+                                    onToggle={(value) => persistPreference('48h_antes', value)}
                                 />
-                            </div>
-                        ) : (
-                            <div className="">
-                                <p className="">
-                                    When you enable two-factor authentication,
-                                    you will be prompted for a secure pin during
-                                    login. This pin can be retrieved from a
-                                    TOTP-supported application on your phone.
-                                </p>
+                                <PreferenceToggle
+                                    id="reminder-24"
+                                    label="24 horas antes"
+                                    description="Recibir notificación un día antes de la fecha límite"
+                                    checked={preferencesData['24h_antes']}
+                                    disabled={processing}
+                                    onToggle={(value) => persistPreference('24h_antes', value)}
+                                />
+                                <PreferenceToggle
+                                    id="reminder-same-day"
+                                    label="El mismo día"
+                                    description="Recibir notificación durante la mañana del día de entrega"
+                                    checked={preferencesData.mismo_dia}
+                                    disabled={processing}
+                                    onToggle={(value) => persistPreference('mismo_dia', value)}
+                                />
 
-                                <div>
-                                    {hasSetupData ? (
-                                        <Button
-                                            onClick={() =>
-                                                setShowSetupModal(true)
-                                            }
-                                        >
-                                            <ShieldCheck />
-                                            Continue setup
-                                        </Button>
-                                    ) : (
-                                        <Form
-                                            {...enable.form()}
-                                            onSuccess={() =>
-                                                setShowSetupModal(true)
-                                            }
-                                        >
-                                            {({ processing }) => (
-                                                <Button
+                                <section className="p-settings__custom-reminder">
+                                    <PreferenceToggle
+                                        id="custom-reminder"
+                                        label="Recordatorio personalizado"
+                                        description="Define cada cuantos minutos quieres recibir la alerta"
+                                        checked={preferencesData.recordatorio_personalizado}
+                                        disabled={processing}
+                                        onToggle={(value) => persistPreference('recordatorio_personalizado', value)}
+                                    />
+
+                                    <label htmlFor="recordatorio_personalizado_minutos">
+                                        Frecuencia personalizada (minutos)
+                                    </label>
+                                    <Input
+                                        id="recordatorio_personalizado_minutos"
+                                        type="number"
+                                        min={1}
+                                        max={10080}
+                                        value={preferencesData.recordatorio_personalizado_minutos}
+                                        disabled={!preferencesData.recordatorio_personalizado || processing}
+                                        onChange={(event) => {
+                                            const value = Math.max(1, Number(event.target.value || 1));
+                                            setPreferencesData((current) => ({
+                                                ...current,
+                                                recordatorio_personalizado_minutos: value,
+                                            }));
+                                        }}
+                                        onBlur={() =>
+                                            persistPreference(
+                                                'recordatorio_personalizado_minutos',
+                                                Math.max(1, Number(preferencesData.recordatorio_personalizado_minutos || 1)),
+                                            )
+                                        }
+                                    />
+                                </section>
+                            </section>
+                        </article>
+                    </section>
+
+                    <section className="p-settings__grid-row">
+                        <article className="p-settings__section">
+                            <header className="p-settings__section-header">
+                                <h2>Conexión a Moodle</h2>
+                                <span aria-hidden="true" />
+                            </header>
+
+                            <section className="p-settings__moodle-card" aria-live="polite">
+                                <section>
+                                    <p className="p-settings__moodle-title">
+                                        {moodleConnected ? 'Conectado a Moodle' : 'Moodle no conectado'}
+                                    </p>
+                                    <p className="p-settings__moodle-meta">
+                                        {moodleConnected
+                                            ? `Última sincronización: hoy a las ${syncStatus.lastSyncLabel ?? '--:--'}`
+                                            : 'Inicia sesión para sincronizar tus datos académicos'}
+                                    </p>
+                                </section>
+
+                                <section className="p-settings__moodle-actions">
+                                    {moodleConnected && (
+                                        <>
+                                            <Form method="post" action="/settings/security/moodle/disconnect">
+                                                {({ processing: disconnectProcessing }) => (
+                                                    <Button
+                                                        type="submit"
+                                                        variant="destructive"
+                                                        className="p-settings__danger-button"
+                                                        disabled={disconnectProcessing}
+                                                    >
+                                                        {disconnectProcessing ? 'Cerrando...' : 'Cerrar sesión'}
+                                                    </Button>
+                                                )}
+                                            </Form>
+
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setShowReconnectForm((value) => !value)}
+                                                className="p-settings__outline-button"
+                                            >
+                                                Reconectar
+                                            </Button>
+                                        </>
+                                    )}
+                                </section>
+                            </section>
+
+                            {(showReconnectForm || !moodleConnected) && (
+                                <Form method="post" action={connect().url} className="p-settings__connect-form">
+                                    {({ errors, processing: connectProcessing }) => (
+                                        <>
+                                            <section className="p-settings__field">
+                                                <label htmlFor="moodle_username">Usuario Moodle</label>
+                                                <Input
+                                                    id="moodle_username"
+                                                    name="moodle_username"
+                                                    required
+                                                    autoComplete="username"
+                                                />
+                                                <InputError message={errors.moodle_username} />
+                                            </section>
+
+                                            <section className="p-settings__field">
+                                                <label htmlFor="moodle_password">Contraseña Moodle</label>
+                                                <Input
+                                                    id="moodle_password"
+                                                    name="moodle_password"
+                                                    type="password"
+                                                    required
+                                                    autoComplete="current-password"
+                                                />
+                                                <InputError message={errors.moodle_password} />
+                                            </section>
+
+                                            <Button type="submit" disabled={connectProcessing}>
+                                                {connectProcessing ? 'Conectando...' : 'Guardar conexion'}
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            )}
+
+                            <p className="p-settings__caption">
+                                Las credenciales están cifradas y almacenadas de forma segura. La sesión se renueva automáticamente.
+                            </p>
+                        </article>
+
+                        <article className="p-settings__section p-settings__section--right">
+                            <header className="p-settings__section-header">
+                                <h2>Canales de Notificación</h2>
+                                <span aria-hidden="true" />
+                            </header>
+
+                            <section className="p-settings__toggles">
+                                <PreferenceToggle
+                                    id="channel-email"
+                                    label="Correo Electrónico"
+                                    description={profile.email ? `Enviar a ${profile.email}` : 'Enviar por correo institucional'}
+                                    checked={preferencesData.email}
+                                    disabled={processing}
+                                    icon="mail"
+                                    onToggle={(value) => persistPreference('email', value)}
+                                />
+                                <PreferenceToggle
+                                    id="channel-push"
+                                    label="Notificaciones Push"
+                                    description="Alertas en tiempo real en el navegador"
+                                    checked={preferencesData.push}
+                                    disabled={processing}
+                                    icon="push"
+                                    onToggle={(value) => persistPreference('push', value)}
+                                />
+                            </section>
+                        </article>
+                    </section>
+
+                    <section className="p-settings__grid-row">
+                        <article className="p-settings__section">
+                            <header className="p-settings__section-header">
+                                <h2>Actualización de Datos (Caché)</h2>
+                                <span aria-hidden="true" />
+                            </header>
+
+                            <section className="p-settings__cache-grid" aria-label="Frecuencias de caché">
+                                <article className="p-settings__cache-card">
+                                    <p>Caché de asignaturas</p>
+                                    <strong>{cacheConfig.asignaturasMinutes} minutos</strong>
+                                </article>
+                                <article className="p-settings__cache-card">
+                                    <p>Caché de tareas</p>
+                                    <strong>{cacheConfig.tareasMinutes} minutos</strong>
+                                </article>
+                            </section>
+                        </article>
+
+                        {canManageTwoFactor ? (
+                            <article className="p-settings__section p-settings__section--right">
+                                <header className="p-settings__section-header">
+                                    <h2>Seguridad de Acceso</h2>
+                                    <span aria-hidden="true" />
+                                </header>
+
+                                <section className="p-settings__two-factor">
+                                    <p className="p-settings__two-factor-status">
+                                        Verificación en 2 pasos: <b>{twoFactorEnabled ? 'Activada' : 'Desactivada'}</b>
+                                    </p>
+
+                                    {twoFactorEnabled ? (
+                                        <Form method="delete" action={disable().url}>
+                                            {({ processing: disabling }) => (
+                                                <button
                                                     type="submit"
-                                                    disabled={processing}
+                                                    role="switch"
+                                                    aria-checked="true"
+                                                    aria-label="Desactivar verificación en 2 pasos"
+                                                    className={[
+                                                        'p-settings__switch',
+                                                        'is-on',
+                                                        disabling ? 'is-disabled' : '',
+                                                    ].join(' ')}
+                                                    disabled={disabling}
                                                 >
-                                                    Enable 2FA
-                                                </Button>
+                                                    <span className="p-settings__switch-thumb" aria-hidden="true" />
+                                                </button>
+                                            )}
+                                        </Form>
+                                    ) : (
+                                        <Form method="post" action={enable().url}>
+                                            {({ processing: enabling }) => (
+                                                <button
+                                                    type="submit"
+                                                    role="switch"
+                                                    aria-checked="false"
+                                                    aria-label="Activar verificación en 2 pasos"
+                                                    className={[
+                                                        'p-settings__switch',
+                                                        enabling ? 'is-disabled' : '',
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}
+                                                    disabled={enabling}
+                                                >
+                                                    <span className="p-settings__switch-thumb" aria-hidden="true" />
+                                                </button>
                                             )}
                                         </Form>
                                     )}
-                                </div>
-                            </div>
+                                </section>
+                            </article>
+                        ) : (
+                            <section className="p-settings__section p-settings__section--right p-settings__section--empty" aria-hidden="true" />
                         )}
+                    </section>
+                </section>
 
-                        <TwoFactorSetupModal
-                            isOpen={showSetupModal}
-                            onClose={() => setShowSetupModal(false)}
-                            requiresConfirmation={requiresConfirmation}
-                            twoFactorEnabled={twoFactorEnabled}
-                            qrCodeSvg={qrCodeSvg}
-                            manualSetupKey={manualSetupKey}
-                            clearSetupData={clearSetupData}
-                            fetchSetupData={fetchSetupData}
-                            errors={errors}
-                        />
-                    </div>
-                )}
-            </SettingsLayout>
-        </AppLayout>
+                <article className="p-settings__danger-zone p-settings__danger-zone--wide">
+                    <header>
+                        <h2>Zona de Peligro</h2>
+                    </header>
+
+                    <section className="p-settings__danger-row">
+                        <section className="p-settings__danger-block">
+                            <h3>Eliminar mi cuenta</h3>
+                            <p>
+                                La eliminación de la cuenta es permanente y conlleva la pérdida de todo el historial académico almacenado.
+                            </p>
+
+                            <Form
+                                method="delete"
+                                action="/settings/security/account"
+                                onBefore={() => window.confirm('Esta acción eliminará tu cuenta de forma permanente. ¿Deseas continuar?')}
+                            >
+                                {({ processing: deleting }) => (
+                                    <Button type="submit" variant="destructive" disabled={deleting}>
+                                        {deleting ? 'Eliminando...' : 'Eliminar mi cuenta'}
+                                    </Button>
+                                )}
+                            </Form>
+                        </section>
+
+                        <section className="p-settings__danger-block">
+                            <h3>Cerrar sesión</h3>
+                            <p>Al cerrar sesión se cerrará también el acceso del usuario en esta aplicación.</p>
+
+                            <Form method="post" action="/logout">
+                                {({ processing: loggingOut }) => (
+                                    <Button type="submit" variant="destructive" disabled={loggingOut}>
+                                        {loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+                                    </Button>
+                                )}
+                            </Form>
+                        </section>
+                    </section>
+                </article>
+
+                <footer className="p-settings__footer">
+                    <p className="p-settings__version">V2.4.0 <span>Release build</span></p>
+                    <p className="p-settings__latency">Sincronización total: <b>14.2ms LAT</b></p>
+                </footer>
+            </main>
+        </>
     );
 }

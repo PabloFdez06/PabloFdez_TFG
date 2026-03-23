@@ -26,6 +26,7 @@ export default function AcademiaHeader({
     studentName,
 }: AcademiaHeaderProps) {
     const displayName = (studentName ?? '').trim();
+    const avatarFallback = displayName !== '' ? displayName.charAt(0).toUpperCase() : 'U';
 
     return (
         <header className="c-academia-header">
@@ -53,9 +54,9 @@ export default function AcademiaHeader({
                     </button>
                     <span className="c-academia-header__toolbar-divider" aria-hidden="true" />
                     {displayName !== '' && <span className="c-academia-header__student">{displayName}</span>}
-                    <span className="c-academia-header__avatar" aria-hidden="true">
-                        {profileAvatarUrl && <img src={profileAvatarUrl} alt="Avatar Moodle" />}
-                    </span>
+                    <Link className="c-academia-header__avatar" href="/settings/security" aria-label="Abrir configuracion">
+                        {profileAvatarUrl ? <img src={profileAvatarUrl} alt="Avatar Moodle" /> : <span>{avatarFallback}</span>}
+                    </Link>
                 </section>
             </section>
         </header>

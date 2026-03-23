@@ -15,7 +15,7 @@ export default function ConfirmPassword() {
         >
             <Head title="Confirm password" />
 
-            <Form {...store.form()} resetOnSuccess={['password']} className="c-auth-form">
+            <Form method="post" action={store().url} resetOnSuccess={['password']} className="c-auth-form">
                 {({ processing, errors }) => (
                     <div className="c-auth-form__fields">
                         <div className="c-auth-form__field">

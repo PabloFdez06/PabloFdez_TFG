@@ -31,7 +31,8 @@ export default function Login({
             <Head title="Log in" />
 
             <Form
-                {...store.form()}
+                method="post"
+                action={store().url}
                 resetOnSuccess={['password']}
                 className="c-auth-form"
             >

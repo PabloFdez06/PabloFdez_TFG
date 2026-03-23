@@ -81,7 +81,8 @@ export default function TwoFactorRecoveryCodes({
 
                     {canRegenerateCodes && (
                         <Form
-                            {...regenerateRecoveryCodes.form()}
+                            method="post"
+                            action={regenerateRecoveryCodes().url}
                             options={{ preserveScroll: true }}
                             onSuccess={fetchRecoveryCodes}
                         >

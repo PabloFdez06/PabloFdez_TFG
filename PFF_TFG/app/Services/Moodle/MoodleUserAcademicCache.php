@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Cache;
 
 class MoodleUserAcademicCache
 {
+    private const ACADEMIC_CACHE_PREFIX = 'moodle:academic:user:v4:';
+
+    private const GRADES_CACHE_PREFIX = 'moodle:grades:user:v2:';
+
     public function __construct(
         private readonly MoodleCasClient $client,
         private readonly MoodleAcademicService $academicService,
@@ -16,12 +20,12 @@ class MoodleUserAcademicCache
     }
 
     /**
-        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string}
+        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string, studentEmail: ?string, academicCourse: ?string, academicYear: ?string}
      */
     public function getForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
-        $cacheKey = 'moodle:academic:user:v4:'.$user->id;
+        $cacheKey = self::ACADEMIC_CACHE_PREFIX.$user->id;
 
         return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
             if (function_exists('set_time_limit')) {
@@ -37,6 +41,9 @@ class MoodleUserAcademicCache
                 $tasks = $this->collectAllTasks($session, $courses);
                 $profileAvatarUrl = $this->extractProfileAvatarUrl($session);
                 $studentName = $this->extractStudentName($session);
+                $studentEmail = $this->extractStudentEmail($session);
+                $academicCourse = $this->extractAcademicCourse($session);
+                $academicYear = $this->extractAcademicYear($session, $courses);
 
                 $normalizedTasks = array_map(function (array $task): array {
                     $fechaIso = is_string($task['fecha_iso'] ?? null) ? (string) $task['fecha_iso'] : '';
@@ -62,6 +69,9 @@ class MoodleUserAcademicCache
                     'tasks' => $normalizedTasks,
                     'profileAvatarUrl' => $profileAvatarUrl,
                     'studentName' => $studentName,
+                    'studentEmail' => $studentEmail,
+                    'academicCourse' => $academicCourse,
+                    'academicYear' => $academicYear,
                 ];
             } finally {
                 $session->close();
@@ -75,7 +85,7 @@ class MoodleUserAcademicCache
     public function getGradesForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
-        $cacheKey = 'moodle:grades:user:v2:'.$user->id;
+        $cacheKey = self::GRADES_CACHE_PREFIX.$user->id;
 
         return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
             $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
@@ -86,6 +96,12 @@ class MoodleUserAcademicCache
                 $session->close();
             }
         });
+    }
+
+    public function clearForUser(User $user): void
+    {
+        Cache::forget(self::ACADEMIC_CACHE_PREFIX.$user->id);
+        Cache::forget(self::GRADES_CACHE_PREFIX.$user->id);
     }
 
     /**
@@ -275,6 +291,114 @@ class MoodleUserAcademicCache
 
         if ($firstName !== '' || $lastName !== '') {
             return trim($firstName.' '.$lastName);
+        }
+
+        return null;
+    }
+
+    private function extractStudentEmail(MoodleSession $session): ?string
+    {
+        $userData = $this->fetchProfileUserDataFromService($session);
+        if (! is_array($userData)) {
+            return null;
+        }
+
+        $email = trim((string) ($userData['email'] ?? ''));
+
+        return $email !== '' ? $email : null;
+    }
+
+    private function extractAcademicCourse(MoodleSession $session): ?string
+    {
+        $userData = $this->fetchProfileUserDataFromService($session);
+        if (is_array($userData)) {
+            $customFields = $userData['customfields'] ?? [];
+            if (is_array($customFields)) {
+                foreach ($customFields as $field) {
+                    if (! is_array($field)) {
+                        continue;
+                    }
+
+                    $fieldName = mb_strtolower(trim((string) (($field['shortname'] ?? $field['name'] ?? ''))));
+                    $fieldValue = trim((string) ($field['value'] ?? ''));
+
+                    if ($fieldValue === '') {
+                        continue;
+                    }
+
+                    if (
+                        str_contains($fieldName, 'curso')
+                        || str_contains($fieldName, 'semestre')
+                        || str_contains($fieldName, 'nivel')
+                        || str_contains($fieldName, 'programa')
+                        || str_contains($fieldName, 'carrera')
+                    ) {
+                        return $fieldValue;
+                    }
+                }
+            }
+
+            $department = trim((string) ($userData['department'] ?? ''));
+            if ($department !== '') {
+                return $department;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $courses
+     */
+    private function extractAcademicYear(MoodleSession $session, array $courses): ?string
+    {
+        $userData = $this->fetchProfileUserDataFromService($session);
+        if (is_array($userData)) {
+            $customFields = $userData['customfields'] ?? [];
+            if (is_array($customFields)) {
+                foreach ($customFields as $field) {
+                    if (! is_array($field)) {
+                        continue;
+                    }
+
+                    $fieldValue = trim((string) ($field['value'] ?? ''));
+                    if ($fieldValue === '') {
+                        continue;
+                    }
+
+                    $parsedYear = $this->extractAcademicYearFromText($fieldValue);
+                    if ($parsedYear !== null) {
+                        return $parsedYear;
+                    }
+                }
+            }
+        }
+
+        foreach ($courses as $course) {
+            $courseName = trim((string) ($course['nombre'] ?? ''));
+            if ($courseName === '') {
+                continue;
+            }
+
+            $parsedYear = $this->extractAcademicYearFromText($courseName);
+            if ($parsedYear !== null) {
+                return $parsedYear;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractAcademicYearFromText(string $text): ?string
+    {
+        if (preg_match('/\b(20\d{2})\s*[\/\-]\s*(20\d{2})\b/u', $text, $match) === 1) {
+            return $match[1].'/'.$match[2];
+        }
+
+        if (preg_match('/\b(20\d{2})\b/u', $text, $match) === 1) {
+            $startYear = (int) $match[1];
+
+            return $startYear.'/'.($startYear + 1);
         }
 
         return null;

@@ -18,7 +18,8 @@ export default function Register() {
         >
             <Head title="Register" />
             <Form
-                {...store.form()}
+                method="post"
+                action={store().url}
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 className="c-auth-form"

@@ -113,13 +113,44 @@
     border: 1px solid rgba(79, 6, 249, 0.24);
     background: rgba(79, 6, 249, 0.08);
     overflow: hidden;
-    display: block;
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+    color: #4f06f9;
+    font-weight: 700;
 }
 
 .c-academia-header__avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.dark .c-academia-header {
+    border-bottom-color: var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 76%, transparent);
+}
+
+.dark .c-academia-header__brand,
+.dark .c-academia-header__nav a,
+.dark .c-academia-header__icon-btn,
+.dark .c-academia-header__student {
+    color: var(--color-text);
+}
+
+.dark .c-academia-header__logo {
+    border-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+    background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+}
+
+.dark .c-academia-header__toolbar-divider {
+    background: var(--color-border);
+}
+
+.dark .c-academia-header__avatar {
+    border-color: color-mix(in srgb, var(--color-brand) 40%, transparent);
+    background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+    color: var(--color-brand);
 }
 
 @media (max-width: 1024px) {

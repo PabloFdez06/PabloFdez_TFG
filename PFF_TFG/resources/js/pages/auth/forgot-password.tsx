@@ -25,7 +25,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             )}
 
             <div className="c-auth-form-wrap">
-                <Form {...email.form()} className="c-auth-form">
+                <Form method="post" action={email().url} className="c-auth-form">
                     {({ processing, errors }) => (
                         <>
                             <div className="c-auth-form__field">
