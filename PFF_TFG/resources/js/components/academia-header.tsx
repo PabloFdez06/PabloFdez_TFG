@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Bell, Boxes } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 type AcademiaHeaderProps = {
     containerClassName: string;
@@ -33,10 +33,8 @@ export default function AcademiaHeader({
             <section className={`c-academia-header__inner ${containerClassName}`}>
                 <section className="c-academia-header__left">
                     <Link className="c-academia-header__brand" href="/dashboard">
-                        <span className="c-academia-header__logo" aria-hidden="true">
-                            <Boxes size={14} />
-                        </span>
-                        <strong>Academia</strong>
+
+                        <strong>OrganizaT</strong>
                     </Link>
 
                     <nav className="c-academia-header__nav" aria-label="Secciones principales">

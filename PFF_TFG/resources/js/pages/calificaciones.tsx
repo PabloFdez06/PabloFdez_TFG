@@ -2,6 +2,8 @@ import { Head } from '@inertiajs/react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AcademiaHeader from '@/components/academia-header';
+import FeedbackContent from '@/components/feedback-content';
+import { formatFeedbackToBlocks } from '@/lib/feedback-parser';
 
 type SubjectTask = {
     name: string;
@@ -135,6 +137,11 @@ export default function Calificaciones({ moodleConnected, studentName, profileAv
     const [isFeaturedExpanded, setIsFeaturedExpanded] = useState(false);
     const [visibleSideSubjectsCount, setVisibleSideSubjectsCount] = useState(3);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackModalData | null>(null);
+
+    const formattedFeedbackBlocks = useMemo(
+        () => (selectedFeedback ? formatFeedbackToBlocks(selectedFeedback.feedback) : []),
+        [selectedFeedback],
+    );
 
     const featuredSubject = useMemo(() => {
         if (selectedSubjectId === null) {
@@ -455,7 +462,7 @@ export default function Calificaciones({ moodleConnected, studentName, profileAv
                                     </button>
                                 </header>
                                 <section className="p-calificaciones__feedback-content">
-                                    <p>{selectedFeedback.feedback}</p>
+                                    <FeedbackContent blocks={formattedFeedbackBlocks} />
                                 </section>
                             </article>
                         </section>
