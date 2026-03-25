@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Moodle\MoodleConnectionController;
 use App\Http\Controllers\Moodle\MoodleConsoleController;
 use App\Http\Controllers\Moodle\MoodleDataController;
+use App\Http\Controllers\Moodle\MoodleMediaController;
 use App\Http\Controllers\Moodle\MoodlePreferencesController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('calificaciones', [CalificacionesController::class, 'index'])->name('calificaciones.index');
     Route::get('moodle-console', [MoodleConsoleController::class, 'index'])->name('moodle.console');
     Route::post('moodle-console/preferences', [MoodleConsoleController::class, 'updatePreferences'])->name('moodle.console.preferences.update');
+    Route::get('moodle/media', [MoodleMediaController::class, 'show'])->name('moodle.media');
 
     Route::post('moodle-connect', [MoodleConnectionController::class, 'connect'])->name('moodle.connect');
     Route::post('moodle-debug', [MoodleConnectionController::class, 'debug'])->name('moodle.debug');

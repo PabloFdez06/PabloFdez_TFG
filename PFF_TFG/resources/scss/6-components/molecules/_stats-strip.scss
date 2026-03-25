@@ -1,0 +1,74 @@
+.c-stats-strip {
+    margin: 0;
+    border: 1px solid var(--color-token-e2e8f0);
+    border-radius: 0.375rem;
+    background: var(--color-token-fff);
+    box-shadow: 0 1px 2px var(--color-token-rgba-15-23-42-0-05);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: relative;
+    overflow: hidden;
+}
+
+.c-stats-strip--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.c-stats-strip::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1.125rem;
+    background:
+        radial-gradient(130% 4.375rem at 50% -45px, var(--color-token-rgba-139-92-246-0) 58%, var(--color-token-rgba-139-92-246-0-32) 67%, var(--color-token-rgba-139-92-246-0) 79%),
+        linear-gradient(90deg, var(--color-token-rgba-139-92-246-0) 0%, var(--color-token-rgba-139-92-246-0-42) 50%, var(--color-token-rgba-139-92-246-0) 100%),
+        linear-gradient(180deg, var(--color-token-rgba-139-92-246-0-15) 0%, var(--color-token-rgba-139-92-246-0-04) 44%, var(--color-token-rgba-139-92-246-0) 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 1.125rem, 100% 1px, 100% 1.125rem;
+    background-position: top center, top center, top center;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.c-stats-strip article {
+    padding: 1rem 0.5rem;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.c-stats-strip article:not(:last-child) {
+    border-right: 1px solid var(--color-token-e2e8f0);
+}
+
+.c-stats-strip strong {
+    font-size: 2.125rem;
+    letter-spacing: -1.2px;
+    color: var(--color-token-1e293b);
+}
+
+.c-stats-strip article.is-highlight strong {
+    color: var(--color-token-4f06f9);
+}
+
+.c-stats-strip small {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-token-94a3b8);
+    font-weight: 700;
+}
+
+@media (max-width: 760px) {
+    .c-stats-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .c-stats-strip article:not(:last-child) {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-token-e2e8f0);
+    }
+}
+

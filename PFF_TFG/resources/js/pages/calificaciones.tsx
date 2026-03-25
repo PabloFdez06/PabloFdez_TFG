@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import AcademiaHeader from '@/components/academia-header';
 import FeedbackContent from '@/components/feedback-content';
 import { formatFeedbackToBlocks } from '@/lib/feedback-parser';
+import { toMoodleMediaUrl } from '@/lib/moodle-media';
 
 type SubjectTask = {
     name: string;
@@ -132,6 +133,20 @@ function formatOneDecimal(value: number): string {
     return value.toFixed(1);
 }
 
+function buildBackgroundImageStyle(imageUrl: string | null): { backgroundImage: string } | undefined {
+    const resolvedImageUrl = toMoodleMediaUrl(imageUrl);
+
+    if (! resolvedImageUrl) {
+        return undefined;
+    }
+
+    const sanitized = resolvedImageUrl.replace(/"/g, '\\"');
+
+    return {
+        backgroundImage: `url("${sanitized}")`,
+    };
+}
+
 export default function Calificaciones({ moodleConnected, studentName, profileAvatarUrl, subjectCards, summary, milestones, pageError }: CalificacionesProps) {
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(subjectCards[0]?.id ?? null);
     const [isFeaturedExpanded, setIsFeaturedExpanded] = useState(false);
@@ -240,7 +255,7 @@ export default function Calificaciones({ moodleConnected, studentName, profileAv
 
                     {pageError && <p className="p-calificaciones__error">{pageError}</p>}
 
-                    <section className="p-calificaciones__summary" aria-label="Resumen de calificaciones">
+                    <section className="p-calificaciones__summary c-stats-strip c-stats-strip--3" aria-label="Resumen de calificaciones">
                         <article className="p-calificaciones__metric">
                             <small>PROMEDIO GLOBAL</small>
                             <strong className="p-calificaciones__metric-highlight">
@@ -272,7 +287,7 @@ export default function Calificaciones({ moodleConnected, studentName, profileAv
                                     type="button"
                                     onClick={() => setIsFeaturedExpanded((prev) => ! prev)}
                                     aria-expanded={isFeaturedExpanded}
-                                    style={featuredSubject.image ? { backgroundImage: `url(${featuredSubject.image})` } : undefined}
+                                    style={buildBackgroundImageStyle(featuredSubject.image)}
                                 >
                                     <header className="p-calificaciones__featured-head">
                                         <section>

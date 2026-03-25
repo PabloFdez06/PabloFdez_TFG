@@ -73,11 +73,13 @@ export default function Dashboard({
     dashboardError,
 }: DashboardProps) {
     const leftColumnRef = useRef<HTMLElement | null>(null);
+    const heroCardRef = useRef<HTMLElement | null>(null);
     const timelineContainerRef = useRef<HTMLElement | null>(null);
     const timelineListRef = useRef<HTMLOListElement | null>(null);
     const timelineActionsRef = useRef<HTMLDivElement | null>(null);
 
     const [timelineMaxHeight, setTimelineMaxHeight] = useState<number | null>(null);
+    const [timelineListOffset, setTimelineListOffset] = useState(0);
     const [visibleTimelineItems, setVisibleTimelineItems] = useState(TIMELINE_BATCH_SIZE);
 
     const visibleTimeline = timeline.slice(0, visibleTimelineItems);
@@ -125,11 +127,12 @@ export default function Dashboard({
     useEffect(() => {
         const updateTimelineHeight = () => {
             const leftColumn = leftColumnRef.current;
+            const heroCard = heroCardRef.current;
             const timelineContainer = timelineContainerRef.current;
             const timelineList = timelineListRef.current;
             const timelineActions = timelineActionsRef.current;
 
-            if (!leftColumn || !timelineContainer || !timelineList) {
+            if (!leftColumn || !heroCard || !timelineContainer || !timelineList) {
                 return;
             }
 
@@ -139,6 +142,14 @@ export default function Dashboard({
             const maxHeight = Math.max(180, Math.floor(leftHeight - timelineTopOffset - timelineActionsHeight));
 
             setTimelineMaxHeight(maxHeight);
+
+            const heroTop = heroCard.getBoundingClientRect().top;
+            const timelineFirstItemTop = timelineList.getBoundingClientRect().top;
+            const alignmentDelta = heroTop - timelineFirstItemTop;
+
+            if (Math.abs(alignmentDelta) > 0.5) {
+                setTimelineListOffset((currentOffset) => currentOffset + alignmentDelta);
+            }
         };
 
         updateTimelineHeight();
@@ -179,34 +190,40 @@ export default function Dashboard({
                                 <i aria-hidden="true" />
                             </section>
 
-                            <article className="p-dashboard__hero">
-                                <p className="p-dashboard__hero-code">{hero.reference}</p>
-                                <h1 className="p-dashboard__hero-title">
-                                    {hero.title}
-                                    <em>{hero.highlight}</em>
-                                </h1>
+                            <article className="p-dashboard__hero" ref={heroCardRef}>
+                                <section className="p-dashboard__hero-main">
+                                    <header className="p-dashboard__hero-head">
+                                        <span className="p-dashboard__hero-tag">{hero.reference}</span>
+                                        <p className="p-dashboard__hero-priority">• {hero.highlight || 'PRIORIDAD ALTA'}</p>
+                                    </header>
 
-                                <section className="p-dashboard__hero-meta">
-                                    <section className="p-dashboard__hero-kpi">
-                                        <small>Cierre en</small>
-                                        <b className="is-brand">{hero.remaining}</b>
+                                    <h1 className="p-dashboard__hero-title">{hero.title}</h1>
+
+                                    <section className="p-dashboard__hero-meta">
+                                        <section className="p-dashboard__hero-kpi">
+                                            <small>Tiempo restante</small>
+                                            <b className="is-critical">{hero.remaining}</b>
+                                        </section>
+                                        <span className="p-dashboard__hero-divider" aria-hidden="true" />
+                                        <section className="p-dashboard__hero-kpi">
+                                            <small>Impacto</small>
+                                            <b>{hero.priority}</b>
+                                        </section>
                                     </section>
-                                    <span className="p-dashboard__hero-divider" aria-hidden="true" />
-                                    <section className="p-dashboard__hero-kpi">
-                                        <small>Impacto</small>
-                                        <b>{hero.priority}</b>
-                                    </section>
+
+                                    <a
+                                        className="p-dashboard__hero-action"
+                                        href={hero.link && hero.link !== '' ? hero.link : '/asignaturas'}
+                                        target={hero.link && hero.link !== '' ? '_blank' : undefined}
+                                        rel={hero.link && hero.link !== '' ? 'noreferrer' : undefined}
+                                    >
+                                        <span>IR A LA TAREA</span>
+                                    </a>
                                 </section>
 
-                                <a
-                                    className="p-dashboard__hero-action"
-                                    href={hero.link && hero.link !== '' ? hero.link : '/asignaturas'}
-                                    target={hero.link && hero.link !== '' ? '_blank' : undefined}
-                                    rel={hero.link && hero.link !== '' ? 'noreferrer' : undefined}
-                                >
-                                    <span>IR A LA TAREA</span>
-                                    <span aria-hidden="true">→</span>
-                                </a>
+                                <aside className="p-dashboard__hero-side" aria-hidden="true">
+                                    <span className="p-dashboard__hero-index">01</span>
+                                </aside>
                             </article>
 
                             <section className="p-dashboard__quick" aria-labelledby="quick-view-title">
@@ -467,12 +484,14 @@ export default function Dashboard({
                         <aside className="p-dashboard__timeline" aria-labelledby="timeline-title" ref={timelineContainerRef}>
                             <header className="p-dashboard__timeline-header">
                                 <h2 id="timeline-title">Linea de tiempo</h2>
-                                <small>OCT 2023</small>
                             </header>
                             <ol
                                 className="p-dashboard__timeline-list"
                                 ref={timelineListRef}
-                                style={timelineMaxHeight ? { maxHeight: `${timelineMaxHeight}px` } : undefined}
+                                style={{
+                                    ...(timelineMaxHeight ? { maxHeight: `${timelineMaxHeight}px` } : {}),
+                                    marginTop: `${timelineListOffset}px`,
+                                }}
                             >
                                 {visibleTimeline.map((event, index) => (
                                     <li key={`${event.title}-${event.when}-${index}`} className={event.current ? 'is-current' : ''}>

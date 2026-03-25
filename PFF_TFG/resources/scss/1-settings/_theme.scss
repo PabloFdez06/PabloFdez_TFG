@@ -1,31 +1,7 @@
-@use './tokens' as t;
+@use './variables';
 
-:root {
-    --font-sans: #{t.$font-sans};
-    --font-display: #{t.$font-display};
-    --color-bg: #f6f5f8;
-    --color-surface: #ffffff;
-    --color-surface-muted: rgba(255, 255, 255, 0.5);
-    --color-text: #0f172a;
-    --color-text-muted: #64748b;
-    --color-border: rgba(79, 6, 249, 0.14);
-    --color-brand: #4f06f9;
-    --color-brand-contrast: #ffffff;
-    --color-danger: #dc2626;
-    --color-danger-soft: #fee2e2;
-    --color-ring: #a78bfa;
-}
-
-.dark {
-    --color-bg: #0d111b;
-    --color-surface: #141b2a;
-    --color-surface-muted: #1b2436;
-    --color-text: #f2f6ff;
-    --color-text-muted: #b8c1d6;
-    --color-border: #2a3550;
-    --color-brand: #75a6ff;
-    --color-brand-contrast: #091329;
-    --color-danger: #ff8f85;
-    --color-danger-soft: #3f1b1c;
-    --color-ring: #6da0ff;
-}
+/*
+  Compatibility layer.
+  Color and typography variables are defined in 1-settings/variables.scss
+  and sourced from 1-settings/_variables.scss.
+*/

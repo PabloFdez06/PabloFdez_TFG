@@ -14,6 +14,7 @@
 @use '6-components/molecules/alert';
 @use '6-components/molecules/dialog';
 @use '6-components/molecules/dropdown';
+@use '6-components/molecules/stats-strip';
 @use '6-components/organisms/header';
 @use '6-components/organisms/sidebar';
 @use '6-components/organisms/auth';
@@ -24,3 +25,4 @@
 @use '6-components/pages/settings';
 @use '7-utilities/helpers';
 @use '7-utilities/spacing';
+

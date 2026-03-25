@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppearance } from '@/hooks/use-appearance';
 import type { Appearance } from '@/hooks/use-appearance';
+import { toMoodleMediaUrl } from '@/lib/moodle-media';
 import { disable, enable } from '@/routes/two-factor';
 
 type UserProfile = {
@@ -143,6 +144,7 @@ export default function Security({
     };
 
     const profileInitial = (profile.fullName ?? 'Usuario').trim().charAt(0).toUpperCase();
+    const avatarUrl = toMoodleMediaUrl(profile.avatarUrl);
 
     const closeSettings = () => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -185,8 +187,8 @@ export default function Security({
 
                     <section className="p-settings__hero-side">
                         <figure className="p-settings__avatar" aria-label="Avatar de usuario">
-                            {profile.avatarUrl ? (
-                                <img src={profile.avatarUrl} alt="Avatar del usuario" />
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt="Avatar del usuario" />
                             ) : (
                                 <span>{profileInitial || 'U'}</span>
                             )}

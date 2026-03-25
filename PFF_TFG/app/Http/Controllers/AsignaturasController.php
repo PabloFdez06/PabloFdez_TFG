@@ -120,6 +120,7 @@ class AsignaturasController extends Controller
                 'title' => (string) ($course['nombre'] ?? 'Asignatura'),
                 'meta' => (string) ($course['categoria'] ?? 'Sin categoria'),
                 'teacher' => (string) ($course['docente'] ?? 'Docente no disponible'),
+                'image' => is_string($course['imagen'] ?? null) && $course['imagen'] !== '' ? (string) $course['imagen'] : null,
                 'progress' => (int) ($course['progreso'] ?? 0),
                 'tasksTotal' => (int) $stats['total'],
                 'tasksPending' => (int) $stats['pending'],

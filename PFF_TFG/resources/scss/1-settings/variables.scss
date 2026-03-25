@@ -3,6 +3,7 @@
 
 :root {
     --font-sans: #{t.$font-sans};
+    --font-display: #{t.$font-display};
     --color-bg: #{v.$color-bg-light};
     --color-surface: #{v.$color-surface-light};
     --color-surface-muted: #{v.$color-surface-muted-light};
@@ -14,6 +15,58 @@
     --color-danger: #{v.$color-danger-light};
     --color-danger-soft: #{v.$color-danger-soft-light};
     --color-ring: #{v.$color-ring-light};
+
+    --color-token-f8f9fa: #{v.$color-token-f8f9fa};
+    --color-token-0f172a: #{v.$color-token-0f172a};
+    --color-token-fff: #{v.$color-token-fff};
+    --color-token-ffffff: #{v.$color-token-ffffff};
+    --color-token-e2e8f0: #{v.$color-token-e2e8f0};
+    --color-token-94a3b8: #{v.$color-token-94a3b8};
+    --color-token-1e293b: #{v.$color-token-1e293b};
+    --color-token-dc2626: #{v.$color-token-dc2626};
+    --color-token-334155: #{v.$color-token-334155};
+    --color-token-4f06f9: #{v.$color-token-4f06f9};
+    --color-token-6526ff: #{v.$color-token-6526ff};
+    --color-token-3600c9: #{v.$color-token-3600c9};
+    --color-token-1a0c5c: #{v.$color-token-1a0c5c};
+    --color-token-061739: #{v.$color-token-061739};
+    --color-token-0b1a49: #{v.$color-token-0b1a49};
+    --color-token-cbd5e1: #{v.$color-token-cbd5e1};
+    --color-token-64748b: #{v.$color-token-64748b};
+
+    --color-token-rgba-15-23-42-0-05: #{v.$color-token-rgba-15-23-42-0-05};
+    --color-token-rgba-15-23-42-0-06: #{v.$color-token-rgba-15-23-42-0-06};
+    --color-token-rgba-15-23-42-0-25: #{v.$color-token-rgba-15-23-42-0-25};
+    --color-token-rgba-79-6-249-0-1: #{v.$color-token-rgba-79-6-249-0-1};
+    --color-token-rgba-79-6-249-0-24: #{v.$color-token-rgba-79-6-249-0-24};
+    --color-token-rgba-79-6-249-0-35: #{v.$color-token-rgba-79-6-249-0-35};
+    --color-token-rgba-255-255-255-0-24: #{v.$color-token-rgba-255-255-255-0-24};
+    --color-token-rgba-255-255-255-0-72: #{v.$color-token-rgba-255-255-255-0-72};
+
+    --color-token-rgba-139-92-246-0: #{v.$color-token-rgba-139-92-246-0};
+    --color-token-rgba-139-92-246-0-04: #{v.$color-token-rgba-139-92-246-0-04};
+    --color-token-rgba-139-92-246-0-15: #{v.$color-token-rgba-139-92-246-0-15};
+    --color-token-rgba-139-92-246-0-32: #{v.$color-token-rgba-139-92-246-0-32};
+    --color-token-rgba-139-92-246-0-42: #{v.$color-token-rgba-139-92-246-0-42};
+
+    --color-auth-shell: #{v.$color-auth-shell-light};
+    --color-auth-hero-text: #{v.$color-auth-hero-text-light};
+    --color-auth-hero-muted: #{v.$color-auth-hero-muted-light};
+    --color-auth-hero-line: #{v.$color-auth-hero-line-light};
+    --color-auth-hero-overlay: #{v.$color-auth-hero-overlay-light};
+    --color-auth-hero-bottom-shadow: #{v.$color-auth-hero-bottom-shadow-light};
+    --color-auth-panel: #{v.$color-auth-panel-light};
+    --color-auth-panel-text: #{v.$color-auth-panel-text-light};
+    --color-auth-panel-muted: #{v.$color-auth-panel-muted-light};
+    --color-auth-panel-label: #{v.$color-auth-panel-label-light};
+    --color-auth-panel-border: #{v.$color-auth-panel-border-light};
+    --color-auth-panel-input: #{v.$color-auth-panel-input-light};
+    --color-auth-panel-input-text: #{v.$color-auth-panel-input-text-light};
+    --color-auth-panel-placeholder: #{v.$color-auth-panel-placeholder-light};
+    --color-auth-cta: #{v.$color-auth-cta-light};
+    --color-auth-cta-hover: #{v.$color-auth-cta-hover-light};
+    --color-auth-cta-text: #{v.$color-auth-cta-text-light};
+    --color-auth-security-dot: #{v.$color-auth-security-dot-light};
 }
 
 .dark {
@@ -28,4 +81,56 @@
     --color-danger: #{v.$color-danger-dark};
     --color-danger-soft: #{v.$color-danger-soft-dark};
     --color-ring: #{v.$color-ring-dark};
+
+    --color-token-f8f9fa: #{v.$color-token-f8f9fa-dark};
+    --color-token-0f172a: #{v.$color-token-0f172a-dark};
+    --color-token-fff: #{v.$color-token-fff-dark};
+    --color-token-ffffff: #{v.$color-token-ffffff-dark};
+    --color-token-e2e8f0: #{v.$color-token-e2e8f0-dark};
+    --color-token-94a3b8: #{v.$color-token-94a3b8-dark};
+    --color-token-1e293b: #{v.$color-token-1e293b-dark};
+    --color-token-dc2626: #{v.$color-token-dc2626-dark};
+    --color-token-334155: #{v.$color-token-334155-dark};
+    --color-token-4f06f9: #{v.$color-token-4f06f9-dark};
+    --color-token-6526ff: #{v.$color-token-6526ff-dark};
+    --color-token-3600c9: #{v.$color-token-3600c9-dark};
+    --color-token-1a0c5c: #{v.$color-token-1a0c5c-dark};
+    --color-token-061739: #{v.$color-token-061739-dark};
+    --color-token-0b1a49: #{v.$color-token-0b1a49-dark};
+    --color-token-cbd5e1: #{v.$color-token-cbd5e1-dark};
+    --color-token-64748b: #{v.$color-token-64748b-dark};
+
+    --color-token-rgba-15-23-42-0-05: #{v.$color-token-rgba-15-23-42-0-05-dark};
+    --color-token-rgba-15-23-42-0-06: #{v.$color-token-rgba-15-23-42-0-06-dark};
+    --color-token-rgba-15-23-42-0-25: #{v.$color-token-rgba-15-23-42-0-25-dark};
+    --color-token-rgba-79-6-249-0-1: #{v.$color-token-rgba-79-6-249-0-1-dark};
+    --color-token-rgba-79-6-249-0-24: #{v.$color-token-rgba-79-6-249-0-24-dark};
+    --color-token-rgba-79-6-249-0-35: #{v.$color-token-rgba-79-6-249-0-35-dark};
+    --color-token-rgba-255-255-255-0-24: #{v.$color-token-rgba-255-255-255-0-24-dark};
+    --color-token-rgba-255-255-255-0-72: #{v.$color-token-rgba-255-255-255-0-72-dark};
+
+    --color-token-rgba-139-92-246-0: #{v.$color-token-rgba-139-92-246-0-dark};
+    --color-token-rgba-139-92-246-0-04: #{v.$color-token-rgba-139-92-246-0-04-dark};
+    --color-token-rgba-139-92-246-0-15: #{v.$color-token-rgba-139-92-246-0-15-dark};
+    --color-token-rgba-139-92-246-0-32: #{v.$color-token-rgba-139-92-246-0-32-dark};
+    --color-token-rgba-139-92-246-0-42: #{v.$color-token-rgba-139-92-246-0-42-dark};
+
+    --color-auth-shell: #{v.$color-auth-shell-dark};
+    --color-auth-hero-text: #{v.$color-auth-hero-text-dark};
+    --color-auth-hero-muted: #{v.$color-auth-hero-muted-dark};
+    --color-auth-hero-line: #{v.$color-auth-hero-line-dark};
+    --color-auth-hero-overlay: #{v.$color-auth-hero-overlay-dark};
+    --color-auth-hero-bottom-shadow: #{v.$color-auth-hero-bottom-shadow-dark};
+    --color-auth-panel: #{v.$color-auth-panel-dark};
+    --color-auth-panel-text: #{v.$color-auth-panel-text-dark};
+    --color-auth-panel-muted: #{v.$color-auth-panel-muted-dark};
+    --color-auth-panel-label: #{v.$color-auth-panel-label-dark};
+    --color-auth-panel-border: #{v.$color-auth-panel-border-dark};
+    --color-auth-panel-input: #{v.$color-auth-panel-input-dark};
+    --color-auth-panel-input-text: #{v.$color-auth-panel-input-text-dark};
+    --color-auth-panel-placeholder: #{v.$color-auth-panel-placeholder-dark};
+    --color-auth-cta: #{v.$color-auth-cta-dark};
+    --color-auth-cta-hover: #{v.$color-auth-cta-hover-dark};
+    --color-auth-cta-text: #{v.$color-auth-cta-text-dark};
+    --color-auth-security-dot: #{v.$color-auth-security-dot-dark};
 }

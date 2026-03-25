@@ -12,13 +12,15 @@ Toda implementación que requiera diseño visual o estructural debe seguir el si
 ### 1) Diseño guiado por la estructura existente
 - Reutilizar la arquitectura de estilos del proyecto (`resources/scss` y componentes UI existentes).
 - Priorizar variables/tokens, utilidades y mixins definidos en el proyecto antes de crear estilos nuevos.
-- Evitar estilos inline salvo casos justificados y puntuales o criticamente necesario.
+- Evitar estilos inline salvo criticamente necesario.
+- Los colores bajo ningun concepto deben ser hardcodeados, siempre usar tokens de color definidos.
 - Mantener naming, organización por capas y convenciones actuales.
 
 ### 2) Uso de mixins y composición
 - Si existe un mixin/utilidad que resuelva el caso, debe usarse en lugar de duplicar reglas CSS/SCSS.
 - Extraer estilos repetidos en mixins o utilidades reutilizables.
 - No introducir estilos ad-hoc si ya hay patrón equivalente en la base de estilos.
+- Prohibido el uso de PX excepto para casos extrictamente necesarios como en media queries, siempre usar unidades relativas (rem) o tokens de espacio definidos, si no están definidos crealos.
 
 ### 3) Semántica HTML estricta
 - Prohibido usar `div` como contenedor genérico por defecto.

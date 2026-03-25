@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
-comuse App\Services\Moodle\Exceptions\MoodleAuthenticationException;
+use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
 use App\Services\Moodle\MoodleUserAcademicCache;
 use Illuminate\Http\Request;

@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
+import { toMoodleMediaUrl } from '@/lib/moodle-media';
 
 type AcademiaHeaderProps = {
     containerClassName: string;
@@ -27,14 +28,14 @@ export default function AcademiaHeader({
 }: AcademiaHeaderProps) {
     const displayName = (studentName ?? '').trim();
     const avatarFallback = displayName !== '' ? displayName.charAt(0).toUpperCase() : 'U';
+    const avatarUrl = toMoodleMediaUrl(profileAvatarUrl);
 
     return (
         <header className="c-academia-header">
             <section className={`c-academia-header__inner ${containerClassName}`}>
                 <section className="c-academia-header__left">
                     <Link className="c-academia-header__brand" href="/dashboard">
-
-                        <strong>OrganizaT</strong>
+                        <strong>Organiza<span>T</span></strong>
                     </Link>
 
                     <nav className="c-academia-header__nav" aria-label="Secciones principales">
@@ -53,7 +54,7 @@ export default function AcademiaHeader({
                     <span className="c-academia-header__toolbar-divider" aria-hidden="true" />
                     {displayName !== '' && <span className="c-academia-header__student">{displayName}</span>}
                     <Link className="c-academia-header__avatar" href="/settings/security" aria-label="Abrir configuracion">
-                        {profileAvatarUrl ? <img src={profileAvatarUrl} alt="Avatar Moodle" /> : <span>{avatarFallback}</span>}
+                        {avatarUrl ? <img src={avatarUrl} alt="Avatar Moodle" /> : <span>{avatarFallback}</span>}
                     </Link>
                 </section>
             </section>

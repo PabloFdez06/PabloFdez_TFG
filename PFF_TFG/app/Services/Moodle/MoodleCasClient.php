@@ -81,6 +81,23 @@ class MoodleCasClient
         return $this->request($session->handle, 'POST', $url, $body, $trace, $traceStep, $headers);
     }
 
+    /**
+     * @return array{body:string,contentType:string}
+     */
+    public function getBinary(MoodleSession $session, string $path, ?array &$trace = null, string $traceStep = 'binary_get'): array
+    {
+        $baseUrl = rtrim((string) config('services.moodle.base_url'), '/');
+        $url = str_starts_with($path, 'http') ? $path : $baseUrl.'/'.ltrim($path, '/');
+
+        $body = $this->request($session->handle, 'GET', $url, null, $trace, $traceStep);
+        $contentType = (string) curl_getinfo($session->handle, CURLINFO_CONTENT_TYPE);
+
+        return [
+            'body' => $body,
+            'contentType' => $contentType !== '' ? $contentType : 'application/octet-stream',
+        ];
+    }
+
     private function initCurl()
     {
         $curl = curl_init();

@@ -54,6 +54,10 @@
     line-height: 1;
 }
 
+.c-academia-header__brand strong span {
+    color: var(--color-brand);
+}
+
 .c-academia-header__nav {
     gap: 30px;
 }
