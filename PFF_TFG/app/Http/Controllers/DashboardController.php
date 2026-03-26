@@ -474,12 +474,8 @@ class DashboardController extends Controller
         $openTasks = [];
 
         foreach ($tasks as $task) {
-            $status = mb_strtolower((string) ($task['estado'] ?? ''));
-            $delivered = (bool) ($task['entregada'] ?? false)
-                || (bool) ($task['calificada'] ?? false)
-                || str_contains($status, 'entregado')
-                || str_contains($status, 'enviado')
-                || str_contains($status, 'submitted');
+                $delivered = (bool) ($task['entregada'] ?? false)
+                    || (bool) ($task['calificada'] ?? false);
 
             if ($delivered) {
                 continue;

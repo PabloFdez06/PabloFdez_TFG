@@ -94,6 +94,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
 }
 
 .p-asignaturas__course-content {

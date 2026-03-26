@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AcademiaHeader from '@/components/academia-header';
 import StatsStrip from '@/components/stats-strip';
 import { toMoodleMediaUrl } from '@/lib/moodle-media';
@@ -148,8 +148,9 @@ export default function Asignaturas({ moodleConnected, studentName, courseCards,
                                         : variant;
 
                                 return (
-                                    <article
+                                    <Link
                                         key={course.id}
+                                        href={`/tareas?subject_id=${course.id}`}
                                         className={`p-asignaturas__course p-asignaturas__course--${cardVariantClass} p-asignaturas__course--span-${span}`}
                                     >
                                         {cardVariantClass === 'hero' && <span className="p-asignaturas__badge">En curso</span>}
@@ -177,7 +178,7 @@ export default function Asignaturas({ moodleConnected, studentName, courseCards,
                                                 </span>
                                             </section>
                                         </section>
-                                    </article>
+                                    </Link>
                                 );
                             })}
 

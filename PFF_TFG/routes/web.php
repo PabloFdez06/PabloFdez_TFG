@@ -3,6 +3,7 @@
 use App\Http\Controllers\AsignaturasController;
 use App\Http\Controllers\CalificacionesController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\TareasController;
 use App\Http\Controllers\Moodle\MoodleConnectionController;
 use App\Http\Controllers\Moodle\MoodleConsoleController;
 use App\Http\Controllers\Moodle\MoodleDataController;
@@ -27,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('panel', [DashboardController::class, 'index'])->name('panel');
     Route::get('asignaturas', [AsignaturasController::class, 'index'])->name('asignaturas.index');
     Route::get('calificaciones', [CalificacionesController::class, 'index'])->name('calificaciones.index');
+    Route::get('tareas', [TareasController::class, 'index'])->name('tareas.index');
     Route::get('moodle-console', [MoodleConsoleController::class, 'index'])->name('moodle.console');
     Route::post('moodle-console/preferences', [MoodleConsoleController::class, 'updatePreferences'])->name('moodle.console.preferences.update');
     Route::get('moodle/media', [MoodleMediaController::class, 'show'])->name('moodle.media');

@@ -89,8 +89,8 @@ class AsignaturasController extends Controller
 
             $stats[$courseId]['total']++;
 
-            $status = mb_strtolower((string) ($task['estado'] ?? ''));
-            $isDelivered = str_contains($status, 'entregado') || str_contains($status, 'enviado') || str_contains($status, 'submitted');
+            $isDelivered = (bool) ($task['entregada'] ?? false)
+                || (bool) ($task['calificada'] ?? false);
             if (! $isDelivered) {
                 $stats[$courseId]['pending']++;
             }

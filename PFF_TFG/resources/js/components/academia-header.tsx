@@ -4,20 +4,21 @@ import { toMoodleMediaUrl } from '@/lib/moodle-media';
 
 type AcademiaHeaderProps = {
     containerClassName: string;
-    activePath: '/dashboard' | '/asignaturas' | '/calificaciones';
+    activePath: '/dashboard' | '/asignaturas' | '/calificaciones' | '/tareas';
     profileAvatarUrl: string | null;
     studentName: string | null;
 };
 
 type HeaderNavItem = {
     label: string;
-    href: '/dashboard' | '/asignaturas' | '/calificaciones';
+    href: '/dashboard' | '/asignaturas' | '/calificaciones' | '/tareas';
 };
 
 const NAV_ITEMS: HeaderNavItem[] = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Asignaturas', href: '/asignaturas' },
     { label: 'Calificaciones', href: '/calificaciones' },
+    { label: 'Tareas', href: '/tareas' },
 ];
 
 export default function AcademiaHeader({

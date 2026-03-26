@@ -99,12 +99,8 @@ class CalificacionesController extends Controller
                 $days = $now->diffInDays($date, false);
             }
 
-            $status = mb_strtolower((string) ($task['estado'] ?? ''));
             $isDelivered = (bool) ($task['entregada'] ?? false)
-                || (bool) ($task['calificada'] ?? false)
-                || str_contains($status, 'entregado')
-                || str_contains($status, 'enviado')
-                || str_contains($status, 'submitted');
+                || (bool) ($task['calificada'] ?? false);
 
             $item = [
                 'title' => $title,

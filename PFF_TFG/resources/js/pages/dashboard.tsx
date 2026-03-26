@@ -133,23 +133,35 @@ export default function Dashboard({
             const timelineActions = timelineActionsRef.current;
 
             if (!leftColumn || !heroCard || !timelineContainer || !timelineList) {
+
                 return;
             }
 
-            const leftHeight = leftColumn.getBoundingClientRect().height;
-            const timelineTopOffset = timelineList.getBoundingClientRect().top - timelineContainer.getBoundingClientRect().top;
+            if (window.innerWidth <= 1180) {
+                setTimelineMaxHeight(null);
+                setTimelineListOffset(0);
+
+                return;
+            }
+
+            const leftColumnRect = leftColumn.getBoundingClientRect();
+            const heroCardRect = heroCard.getBoundingClientRect();
+            const timelineListRect = timelineList.getBoundingClientRect();
+            const shouldLockToHeroCard = visibleTimelineItems <= TIMELINE_BATCH_SIZE;
+            const desiredTop = heroCardRect.top;
+            const naturalTop = timelineListRect.top - timelineListOffset;
+            const desiredOffset = desiredTop - naturalTop;
+            const stableOffset = Math.abs(desiredOffset - timelineListOffset) > 0.5 ? desiredOffset : timelineListOffset;
+
+            setTimelineListOffset(stableOffset);
+
+            const alignedTop = naturalTop + stableOffset;
             const timelineActionsHeight = timelineActions ? timelineActions.getBoundingClientRect().height + 16 : 0;
-            const maxHeight = Math.max(180, Math.floor(leftHeight - timelineTopOffset - timelineActionsHeight));
+            const targetBottom = shouldLockToHeroCard ? heroCardRect.bottom : leftColumnRect.bottom;
+            const availableHeight = targetBottom - alignedTop - timelineActionsHeight;
+            const maxHeight = Math.max(180, Math.floor(availableHeight));
 
             setTimelineMaxHeight(maxHeight);
-
-            const heroTop = heroCard.getBoundingClientRect().top;
-            const timelineFirstItemTop = timelineList.getBoundingClientRect().top;
-            const alignmentDelta = heroTop - timelineFirstItemTop;
-
-            if (Math.abs(alignmentDelta) > 0.5) {
-                setTimelineListOffset((currentOffset) => currentOffset + alignmentDelta);
-            }
         };
 
         updateTimelineHeight();
@@ -168,7 +180,7 @@ export default function Dashboard({
             observer.disconnect();
             window.removeEventListener('resize', updateTimelineHeight);
         };
-    }, [timeline.length, hasMoreTimelineItems]);
+    }, [timeline.length, hasMoreTimelineItems, visibleTimelineItems, timelineListOffset]);
 
     return (
         <>

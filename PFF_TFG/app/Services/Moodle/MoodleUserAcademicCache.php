@@ -5,6 +5,7 @@ namespace App\Services\Moodle;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class MoodleUserAcademicCache
 {
@@ -39,6 +40,8 @@ class MoodleUserAcademicCache
             try {
                 $courses = $this->academicService->getCourses($session, includeTutor: true);
                 $tasks = $this->collectAllTasks($session, $courses);
+                $gradeReport = $this->academicService->getGrades($session);
+                $tasks = $this->enrichTasksWithGradeReport($tasks, is_array($gradeReport) ? $gradeReport : []);
                 $profileAvatarUrl = $this->extractProfileAvatarUrl($session);
                 $studentName = $this->extractStudentName($session);
                 $studentEmail = $this->extractStudentEmail($session);
@@ -125,16 +128,17 @@ class MoodleUserAcademicCache
                 $rawGradeText = trim((string) ($task['calificacion'] ?? ''));
                 $gradeText = mb_strtolower($rawGradeText);
                 $feedbackText = trim((string) ($task['retroalimentacion'] ?? ''));
-                $entregada = str_contains($statusText, 'enviado') || str_contains($statusText, 'entregado') || str_contains($statusText, 'submitted');
+                $entregada = $this->isDeliveredFromStatus($statusText);
                 $hasNumericGrade = $this->formatNumericGrade($rawGradeText) !== null;
                 $hasRubricGrade = $this->extractRubricGrade($rawGradeText) !== null;
                 $gradeLooksLikeFeedback = str_contains($gradeText, 'retroaliment')
                     || str_contains($gradeText, 'feedback')
                     || str_contains($gradeText, 'comentario')
                     || str_contains($gradeText, 'observacion');
+                $hasExplicitGrade = $this->isExplicitGradeValue($gradeText, $gradeLooksLikeFeedback);
                 $hasFeedbackAsGrade = $this->hasMeaningfulFeedback($feedbackText)
-                    || ($gradeLooksLikeFeedback && $this->hasMeaningfulFeedback($rawGradeText));
-                $calificada = $hasNumericGrade || $hasRubricGrade || $hasFeedbackAsGrade;
+                    || $this->hasMeaningfulFeedback($rawGradeText);
+                $calificada = $hasNumericGrade || $hasRubricGrade || $hasExplicitGrade || $hasFeedbackAsGrade;
 
                 $tasks[] = [
                     'asignatura_id' => $courseId,
@@ -159,6 +163,212 @@ class MoodleUserAcademicCache
         return $tasks;
     }
 
+    private function isDeliveredFromStatus(string $statusText): bool
+    {
+        if ($statusText === '') {
+            return false;
+        }
+
+        $negativeMarkers = [
+            'sin entregar',
+            'no entregad',
+            'no enviad',
+            'not submitted',
+            'no submission',
+            'draft',
+            'borrador',
+        ];
+
+        foreach ($negativeMarkers as $marker) {
+            if (str_contains($statusText, $marker)) {
+                return false;
+            }
+        }
+
+        return str_contains($statusText, 'entregado')
+            || str_contains($statusText, 'enviado')
+            || str_contains($statusText, 'submitted for grading')
+            || str_contains($statusText, 'submitted');
+    }
+
+    private function isExplicitGradeValue(string $gradeText, bool $gradeLooksLikeFeedback): bool
+    {
+        if ($gradeText === '' || $gradeText === '-' || $gradeLooksLikeFeedback) {
+            return false;
+        }
+
+        $negativeMarkers = [
+            'sin calificar',
+            'not graded',
+            'ungraded',
+            'no grade',
+            'pendiente',
+        ];
+
+        foreach ($negativeMarkers as $marker) {
+            if (str_contains($gradeText, $marker)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @param  array<int, array<string, mixed>>  $gradeReport
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrichTasksWithGradeReport(array $tasks, array $gradeReport): array
+    {
+        $reportByCourseAndName = [];
+
+        foreach ($gradeReport as $courseReport) {
+            if (! is_array($courseReport)) {
+                continue;
+            }
+
+            $courseId = (int) ($courseReport['asignatura_id'] ?? 0);
+            if ($courseId <= 0) {
+                continue;
+            }
+
+            $items = is_array($courseReport['items'] ?? null) ? $courseReport['items'] : [];
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $itemName = $this->normalizeTextKey((string) ($item['item'] ?? ''));
+                if ($itemName === '') {
+                    continue;
+                }
+
+                $hasGradeSignal = $this->gradeReportItemHasGradeSignal($item);
+                $feedbackText = trim((string) ($item['retroalimentacion_texto'] ?? ''));
+
+                if (! isset($reportByCourseAndName[$courseId][$itemName])) {
+                    $reportByCourseAndName[$courseId][$itemName] = [
+                        'hasGradeSignal' => $hasGradeSignal,
+                        'feedback' => $feedbackText,
+                    ];
+
+                    continue;
+                }
+
+                $current = $reportByCourseAndName[$courseId][$itemName];
+                $reportByCourseAndName[$courseId][$itemName] = [
+                    'hasGradeSignal' => (bool) ($current['hasGradeSignal'] ?? false) || $hasGradeSignal,
+                    'feedback' => trim((string) ($current['feedback'] ?? '')) !== ''
+                        ? (string) ($current['feedback'] ?? '')
+                        : $feedbackText,
+                ];
+            }
+        }
+
+        foreach ($tasks as $index => $task) {
+            if (! is_array($task)) {
+                continue;
+            }
+
+            $courseId = (int) ($task['asignatura_id'] ?? 0);
+            $taskName = $this->normalizeTextKey((string) ($task['nombre'] ?? ''));
+
+            if ($courseId <= 0 || $taskName === '') {
+                continue;
+            }
+
+            $reportMatch = $this->findGradeReportMatch($courseId, $taskName, $reportByCourseAndName);
+            if (! is_array($reportMatch) || ! ((bool) ($reportMatch['hasGradeSignal'] ?? false))) {
+                continue;
+            }
+
+            $tasks[$index]['calificada'] = true;
+            $tasks[$index]['pendiente'] = false;
+
+            $feedback = trim((string) ($reportMatch['feedback'] ?? ''));
+            if ($feedback !== '') {
+                $tasks[$index]['retroalimentacion'] = $feedback;
+            }
+        }
+
+        return $tasks;
+    }
+
+    /**
+     * @param array<int, array<string, array{hasGradeSignal:bool, feedback:string}>> $reportByCourseAndName
+     * @return array{hasGradeSignal:bool, feedback:string}|null
+     */
+    private function findGradeReportMatch(int $courseId, string $taskKey, array $reportByCourseAndName): ?array
+    {
+        $courseMap = $reportByCourseAndName[$courseId] ?? null;
+        if (! is_array($courseMap) || $courseMap === []) {
+            return null;
+        }
+
+        if (isset($courseMap[$taskKey])) {
+            return $courseMap[$taskKey];
+        }
+
+        $bestMatch = null;
+        $bestScore = 0.0;
+
+        foreach ($courseMap as $itemKey => $itemValue) {
+            if (! is_array($itemValue)) {
+                continue;
+            }
+
+            $score = 0.0;
+            $taskLen = mb_strlen($taskKey);
+            $itemLen = mb_strlen((string) $itemKey);
+
+            if ($taskLen >= 8 && $itemLen >= 8 && (str_contains($taskKey, (string) $itemKey) || str_contains((string) $itemKey, $taskKey))) {
+                $score = 95.0;
+            } else {
+                similar_text($taskKey, (string) $itemKey, $percent);
+                $score = (float) $percent;
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestMatch = $itemValue;
+            }
+        }
+
+        return $bestScore >= 72.0 ? $bestMatch : null;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function gradeReportItemHasGradeSignal(array $item): bool
+    {
+        $gradeText = trim((string) ($item['calificacion_texto'] ?? ''));
+        $feedbackText = trim((string) ($item['retroalimentacion_texto'] ?? ''));
+
+        $hasNumericGrade = $this->formatNumericGrade($gradeText) !== null;
+        $hasRubricGrade = $this->extractRubricGrade($gradeText) !== null;
+
+        $gradeLooksLikeFeedback = str_contains(mb_strtolower($gradeText), 'retroaliment')
+            || str_contains(mb_strtolower($gradeText), 'feedback')
+            || str_contains(mb_strtolower($gradeText), 'comentario')
+            || str_contains(mb_strtolower($gradeText), 'observacion');
+
+        $hasExplicitGrade = $this->isExplicitGradeValue(mb_strtolower($gradeText), $gradeLooksLikeFeedback);
+        $hasFeedbackAsGrade = $this->hasMeaningfulFeedback($feedbackText);
+
+        return $hasNumericGrade || $hasRubricGrade || $hasExplicitGrade || $hasFeedbackAsGrade;
+    }
+
+    private function normalizeTextKey(string $value): string
+    {
+        $normalized = mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $value)));
+        $normalized = Str::ascii($normalized);
+        $normalized = (string) preg_replace('/[^a-z0-9]+/u', ' ', $normalized);
+
+        return trim((string) preg_replace('/\s+/u', ' ', $normalized));
+    }
+
     private function hasMeaningfulFeedback(string $text): bool
     {
         $normalized = mb_strtolower(trim($text));
@@ -174,11 +384,11 @@ class MoodleUserAcademicCache
             return false;
         }
 
-        if (mb_strlen($clean) < 4) {
+        if (mb_strlen($clean) < 2) {
             return false;
         }
 
-        return preg_match('/[\p{L}\p{N}]{2,}/u', $clean) === 1;
+        return preg_match('/[\p{L}\p{N}]/u', $clean) === 1;
     }
 
     private function extractRubricGrade(string $value): ?string
