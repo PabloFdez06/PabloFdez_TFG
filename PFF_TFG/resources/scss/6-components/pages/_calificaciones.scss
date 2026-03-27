@@ -789,7 +789,7 @@ a.p-calificaciones__task-name {
 }
 
 .p-calificaciones__feedback-content code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-family: var(--font-sans);
     font-size: 0.95em;
     background: rgba(15, 23, 42, 0.08);
     border-radius: 4px;
@@ -933,3 +933,4 @@ a.p-calificaciones__task-name {
         flex: 1 1 auto;
     }
 }
+

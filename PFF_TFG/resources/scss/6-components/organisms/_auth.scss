@@ -310,7 +310,7 @@
 
 .c-auth-editorial__hero-content h1 {
     margin: 0;
-    font-family: 'Manrope', var(--font-sans);
+    font-family: var(--font-sans);
     font-weight: 800;
     font-size: clamp(2.6rem, 5vw, 4.7rem);
     line-height: 0.95;
@@ -367,7 +367,7 @@
     text-decoration: none;
     text-transform: uppercase;
     letter-spacing: -0.02rem;
-    font-family: 'Manrope', var(--font-sans);
+    font-family: var(--font-sans);
     font-weight: 800;
     font-size: clamp(1.15rem, 3vw, 1.7rem);
     color: var(--color-auth-panel-text);
@@ -375,7 +375,7 @@
 
 .c-auth-editorial__header h2 {
     margin: 0;
-    font-family: 'Manrope', var(--font-sans);
+    font-family: var(--font-sans);
     font-weight: 700;
     font-size: clamp(1.6rem, 4vw, 2.4rem);
     line-height: 1.05;
@@ -541,7 +541,7 @@
     border-radius: 0;
     background: var(--color-auth-cta);
     color: var(--color-auth-cta-text);
-    font-family: 'Manrope', var(--font-sans);
+    font-family: var(--font-sans);
     text-transform: uppercase;
     letter-spacing: 0.1rem;
     font-size: 0.95rem;
@@ -660,3 +660,4 @@
     }
 
 }
+
