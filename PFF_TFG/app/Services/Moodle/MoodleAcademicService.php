@@ -15,6 +15,7 @@ class MoodleAcademicService
         private readonly GradesParser $gradesParser,
         private readonly ParticipantsParser $participantsParser,
         private readonly SpanishDateParser $dateParser,
+        private readonly MoodleAcademicRules $rules,
     ) {
     }
 
@@ -124,15 +125,12 @@ class MoodleAcademicService
                 $statusText = mb_strtolower((string) ($task['estado'] ?? ''));
                 $gradeText = mb_strtolower((string) ($task['calificacion'] ?? ''));
                 $feedbackText = trim((string) ($task['retroalimentacion'] ?? ''));
-                $gradeLooksLikeFeedback = str_contains($gradeText, 'retroaliment')
-                    || str_contains($gradeText, 'feedback')
-                    || str_contains($gradeText, 'comentario')
-                    || str_contains($gradeText, 'observacion');
+                $gradeLooksLikeFeedback = $this->rules->looksLikeFeedback($gradeText);
 
-                $entregada = $this->isDeliveredFromStatus($statusText);
-                $calificada = $this->isExplicitGradeValue($gradeText)
-                    || $this->hasMeaningfulFeedback($feedbackText)
-                    || $this->hasMeaningfulFeedback((string) ($task['calificacion'] ?? ''));
+                $entregada = $this->rules->isDeliveredFromStatus($statusText);
+                $calificada = $this->rules->isExplicitGradeValue($gradeText, $gradeLooksLikeFeedback)
+                    || $this->rules->hasMeaningfulFeedback($feedbackText)
+                    || $this->rules->hasMeaningfulFeedback((string) ($task['calificacion'] ?? ''));
                 $pendiente = ! $entregada && ! $calificada;
 
                 $diasRestantes = null;
@@ -157,84 +155,6 @@ class MoodleAcademicService
             'asignaturas' => $courseCards,
             'tareas' => $tasks,
         ];
-    }
-
-    private function isDeliveredFromStatus(string $statusText): bool
-    {
-        if ($statusText === '') {
-            return false;
-        }
-
-        $negativeMarkers = [
-            'sin entregar',
-            'no entregad',
-            'no enviad',
-            'not submitted',
-            'no submission',
-            'draft',
-            'borrador',
-        ];
-
-        foreach ($negativeMarkers as $marker) {
-            if (str_contains($statusText, $marker)) {
-                return false;
-            }
-        }
-
-        return str_contains($statusText, 'entregado')
-            || str_contains($statusText, 'enviado')
-            || str_contains($statusText, 'submitted for grading')
-            || str_contains($statusText, 'submitted');
-    }
-
-    private function isExplicitGradeValue(string $gradeText): bool
-    {
-        $gradeText = trim($gradeText);
-        if ($gradeText === '' || $gradeText === '-') {
-            return false;
-        }
-
-        $negativeMarkers = [
-            'sin calificar',
-            'not graded',
-            'ungraded',
-            'no grade',
-            'pendiente',
-            'feedback',
-            'retroaliment',
-            'comentario',
-            'observacion',
-        ];
-
-        foreach ($negativeMarkers as $marker) {
-            if (str_contains($gradeText, $marker)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function hasMeaningfulFeedback(string $text): bool
-    {
-        $normalized = mb_strtolower(trim($text));
-
-        if ($normalized === '') {
-            return false;
-        }
-
-        $clean = preg_replace('/\b(sin calificar|sin calificacion|not graded|sin entregar|no entregado|no enviado|pendiente|calificaci[oó]n|grade|feedback comments?|comentarios? de retroalimentaci[oó]n)\b[:\s-]*/iu', ' ', $normalized);
-        $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
-
-        if ($clean === '') {
-            return false;
-        }
-
-        if (mb_strlen($clean) < 2) {
-            return false;
-        }
-
-        return preg_match('/[\p{L}\p{N}]/u', $clean) === 1;
     }
 
     /**

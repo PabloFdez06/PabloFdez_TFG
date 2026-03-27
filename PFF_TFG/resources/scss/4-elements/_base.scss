@@ -13,6 +13,25 @@ a {
     color: inherit;
 }
 
+a[href],
+button,
+[role='button'],
+input[type='button'],
+input[type='submit'],
+input[type='reset'],
+select,
+summary {
+    cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled='true'] {
+    cursor: not-allowed;
+}
+
 hr {
     border: 0;
     border-top: 1px solid var(--color-border);

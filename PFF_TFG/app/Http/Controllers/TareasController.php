@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
+use App\Services\Moodle\MoodleAcademicRules;
 use App\Services\Moodle\MoodleUserAcademicCache;
 use App\Services\Moodle\SpanishDateParser;
 use Carbon\CarbonImmutable;
@@ -16,6 +17,7 @@ class TareasController extends Controller
     public function __construct(
         private readonly MoodleUserAcademicCache $cache,
         private readonly SpanishDateParser $dateParser,
+        private readonly MoodleAcademicRules $rules,
     ) {
     }
 
@@ -356,7 +358,7 @@ class TareasController extends Controller
     {
         $feedbackText = trim((string) ($task['retroalimentacion'] ?? ''));
         $isGraded = (bool) ($task['calificada'] ?? false)
-            || $this->hasMeaningfulFeedback($feedbackText);
+            || $this->rules->hasMeaningfulFeedback($feedbackText);
 
         if ($isGraded) {
             return [
@@ -397,24 +399,6 @@ class TareasController extends Controller
             'tone' => $isCritical ? 'critical' : 'pending',
             'isOverdue' => false,
         ];
-    }
-
-    private function hasMeaningfulFeedback(string $text): bool
-    {
-        $normalized = mb_strtolower(trim($text));
-
-        if ($normalized === '') {
-            return false;
-        }
-
-        $clean = preg_replace('/\b(sin calificar|sin calificacion|not graded|sin entregar|no entregado|no enviado|pendiente|calificaci[oó]n|grade|feedback comments?|comentarios? de retroalimentaci[oó]n)\b[:\s-]*/iu', ' ', $normalized);
-        $clean = trim((string) preg_replace('/\s+/u', ' ', (string) $clean));
-
-        if ($clean === '') {
-            return false;
-        }
-
-        return preg_match('/[\p{L}\p{N}]/u', $clean) === 1;
     }
 
     private function buildDueLabel(?CarbonImmutable $dueDate, string $rawLabel): string

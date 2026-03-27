@@ -75,8 +75,8 @@ class SecurityController extends Controller
 
         $preferences = array_merge($this->defaultPreferences(), $savedPreferences);
 
-        $cacheAssignmentsMinutes = max(1, (int) config('services.moodle.cache_asignaturas_minutes', 15));
-        $cacheTasksMinutes = max(1, (int) config('services.moodle.cache_tareas_minutes', 5));
+        $cacheFreshMinutes = max(1, (int) ceil(max(60, (int) config('services.moodle.cache_ttl_seconds', 300)) / 60));
+        $cacheStaleMinutes = max($cacheFreshMinutes, (int) ceil(max(60, (int) config('services.moodle.cache_stale_ttl_seconds', 900)) / 60));
 
         return Inertia::render('settings/security', [
             'moodleConnected' => $moodleConnected,
@@ -86,8 +86,9 @@ class SecurityController extends Controller
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
             'twoFactorEnabled' => $user?->hasEnabledTwoFactorAuthentication() ?? false,
             'cacheConfig' => [
-                'asignaturasMinutes' => $cacheAssignmentsMinutes,
-                'tareasMinutes' => $cacheTasksMinutes,
+                'asignaturasMinutes' => $cacheFreshMinutes,
+                'tareasMinutes' => $cacheFreshMinutes,
+                'staleMinutes' => $cacheStaleMinutes,
             ],
         ]);
     }

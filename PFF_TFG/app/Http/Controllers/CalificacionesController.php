@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Moodle\Exceptions\MoodleAuthenticationException;
 use App\Services\Moodle\Exceptions\MoodleRequestException;
+use App\Services\Moodle\MoodleAcademicRules;
 use App\Services\Moodle\SpanishDateParser;
 use App\Services\Moodle\MoodleUserAcademicCache;
 use Carbon\CarbonImmutable;
@@ -16,6 +17,7 @@ class CalificacionesController extends Controller
     public function __construct(
         private readonly MoodleUserAcademicCache $cache,
         private readonly SpanishDateParser $dateParser,
+        private readonly MoodleAcademicRules $rules,
     ) {
     }
 
@@ -38,7 +40,9 @@ class CalificacionesController extends Controller
         if ($moodleConnected) {
             try {
                 $academicPayload = $this->cache->getForUser($user);
-                $gradeReport = $this->cache->getGradesForUser($user);
+                $gradeReport = is_array($academicPayload['gradeReport'] ?? null)
+                    ? $academicPayload['gradeReport']
+                    : $this->cache->getGradesForUser($user);
                 $courses = is_array($academicPayload['courses'] ?? null) ? $academicPayload['courses'] : [];
                 $tasks = is_array($academicPayload['tasks'] ?? null) ? $academicPayload['tasks'] : [];
 
@@ -357,21 +361,21 @@ class CalificacionesController extends Controller
         if ($numeric !== null) {
             return [
                 'grade' => $numeric,
-                'feedback' => $this->hasMeaningfulFeedback($feedbackText) ? $feedbackText : null,
+                'feedback' => $this->rules->hasMeaningfulFeedback($feedbackText) ? $feedbackText : null,
                 'isNumeric' => true,
             ];
         }
 
-        $rubric = $this->extractRubricGrade($gradeText);
+        $rubric = $this->rules->extractRubricGrade($gradeText);
         if ($rubric !== null) {
             return [
                 'grade' => $rubric,
-                'feedback' => $this->hasMeaningfulFeedback($feedbackText) ? $feedbackText : null,
+                'feedback' => $this->rules->hasMeaningfulFeedback($feedbackText) ? $feedbackText : null,
                 'isNumeric' => false,
             ];
         }
 
-        if ($this->hasMeaningfulFeedback($feedbackText)) {
+        if ($this->rules->hasMeaningfulFeedback($feedbackText)) {
             return [
                 'grade' => '-',
                 'feedback' => $feedbackText,
@@ -386,69 +390,6 @@ class CalificacionesController extends Controller
         ];
     }
 
-    private function hasMeaningfulFeedback(string $text): bool
-    {
-        $normalized = mb_strtolower(trim($text));
-
-        if ($normalized === '') {
-            return false;
-        }
-
-        $clean = preg_replace('/\b(sin calificar|sin calificacion|not graded|sin entregar|no entregado|no enviado|pendiente|calificaci[oó]n|grade|feedback comments?|comentarios? de retroalimentaci[oó]n)\b[:\s-]*/iu', ' ', $normalized);
-        $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
-
-        if ($clean === '') {
-            return false;
-        }
-
-        if (mb_strlen($clean) < 4) {
-            return false;
-        }
-
-        return preg_match('/[\p{L}\p{N}]{2,}/u', $clean) === 1;
-    }
-
-    private function extractRubricGrade(string $value): ?string
-    {
-        if (preg_match('/\b(SF|BN|NT|SB)\b/i', trim($value), $match) !== 1) {
-            return null;
-        }
-
-        return mb_strtoupper($match[1]);
-    }
-
-    private function formatNumericGrade(string $value): ?string
-    {
-        $normalized = trim(str_replace(',', '.', $value));
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
-            return $this->normalizeNumberToken($match[1]).'/'.$this->normalizeNumberToken($match[2]);
-        }
-
-        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
-            return $this->normalizeNumberToken($match[1]).'/10';
-        }
-
-        return null;
-    }
-
-    private function normalizeNumberToken(string $token): string
-    {
-        $number = (float) $token;
-
-        if (fmod($number, 1.0) === 0.0) {
-            return (string) ((int) $number);
-        }
-
-        $value = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
-
-        return $value;
-    }
-
     private function formatGradeWithRange(string $gradeText, string $rangeText): ?string
     {
         $gradeNormalized = trim(str_replace(',', '.', $gradeText));
@@ -460,10 +401,10 @@ class CalificacionesController extends Controller
             return null;
         }
 
-        $grade = $this->normalizeNumberToken($gradeMatch[1]);
+        $grade = $this->rules->normalizeNumberToken($gradeMatch[1]);
 
         if (preg_match('/([0-9]+(?:[\.,][0-9]+)?)\s*$/', $rangeText, $rangeMatch) === 1) {
-            $denominator = $this->normalizeNumberToken(str_replace(',', '.', $rangeMatch[1]));
+            $denominator = $this->rules->normalizeNumberToken(str_replace(',', '.', $rangeMatch[1]));
             return $grade.'/'.$denominator;
         }
 

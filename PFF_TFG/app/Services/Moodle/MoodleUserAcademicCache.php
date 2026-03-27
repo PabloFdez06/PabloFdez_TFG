@@ -9,77 +9,120 @@ use Illuminate\Support\Str;
 
 class MoodleUserAcademicCache
 {
-    private const ACADEMIC_CACHE_PREFIX = 'moodle:academic:user:v4:';
+    private const ACADEMIC_CACHE_PREFIX = 'moodle:academic:user:v5:';
 
-    private const GRADES_CACHE_PREFIX = 'moodle:grades:user:v2:';
+    private const GRADES_CACHE_PREFIX = 'moodle:grades:user:v3:';
+
+    private const LOCK_PREFIX = 'moodle:cache:lock:';
 
     public function __construct(
         private readonly MoodleCasClient $client,
         private readonly MoodleAcademicService $academicService,
         private readonly SpanishDateParser $dateParser,
+        private readonly MoodleAcademicRules $rules,
     ) {
     }
 
     /**
-        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string, studentEmail: ?string, academicCourse: ?string, academicYear: ?string}
+        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, gradeReport: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string, studentEmail: ?string, academicCourse: ?string, academicYear: ?string}
      */
     public function getForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
+        $staleTtlSeconds = max($ttlSeconds, (int) config('services.moodle.cache_stale_ttl_seconds', 900));
+        $lockTtlSeconds = max(10, (int) config('services.moodle.cache_lock_ttl_seconds', 120));
+        $lockWaitMs = max(0, (int) config('services.moodle.cache_lock_wait_ms', 2000));
+        $lockPollMs = max(50, (int) config('services.moodle.cache_lock_poll_ms', 200));
         $cacheKey = self::ACADEMIC_CACHE_PREFIX.$user->id;
+        $lockKey = self::LOCK_PREFIX.'academic:'.$user->id;
 
-        return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
-            if (function_exists('set_time_limit')) {
-                @set_time_limit(300);
-            }
+        $envelope = $this->getEnvelope($cacheKey);
 
-            @ini_set('max_execution_time', '300');
+        if ($this->isEnvelopeFresh($envelope, $ttlSeconds)) {
+            return $this->extractEnvelopeData($envelope);
+        }
 
-            $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
+        if ($this->isEnvelopeWithinStale($envelope, $staleTtlSeconds)) {
+            $this->scheduleAsyncRefresh(
+                $lockKey,
+                $cacheKey,
+                $ttlSeconds,
+                $staleTtlSeconds,
+                $lockTtlSeconds,
+                fn (): array => $this->buildAcademicPayload($user),
+            );
 
-            try {
-                $courses = $this->academicService->getCourses($session, includeTutor: true);
-                $tasks = $this->collectAllTasks($session, $courses);
-                $gradeReport = $this->academicService->getGrades($session);
-                $tasks = $this->enrichTasksWithGradeReport($tasks, is_array($gradeReport) ? $gradeReport : []);
-                $profileAvatarUrl = $this->extractProfileAvatarUrl($session);
-                $studentName = $this->extractStudentName($session);
-                $studentEmail = $this->extractStudentEmail($session);
-                $academicCourse = $this->extractAcademicCourse($session);
-                $academicYear = $this->extractAcademicYear($session, $courses);
+            return $this->extractEnvelopeData($envelope);
+        }
 
-                $normalizedTasks = array_map(function (array $task): array {
-                    $fechaIso = is_string($task['fecha_iso'] ?? null) ? (string) $task['fecha_iso'] : '';
+        return $this->recomputeWithLock(
+            $lockKey,
+            $cacheKey,
+            $ttlSeconds,
+            $staleTtlSeconds,
+            $lockTtlSeconds,
+            $lockWaitMs,
+            $lockPollMs,
+            fn (): array => $this->buildAcademicPayload($user),
+        );
+    }
 
-                    if ($fechaIso === '' && is_string($task['fecha_entrega'] ?? null)) {
-                        $fechaIso = (string) ($this->dateParser->toIso((string) $task['fecha_entrega']) ?? '');
-                        $task['fecha_iso'] = $fechaIso !== '' ? $fechaIso : null;
+    /**
+        * @return array{courses: array<int, array<string, mixed>>, tasks: array<int, array<string, mixed>>, gradeReport: array<int, array<string, mixed>>, profileAvatarUrl: ?string, studentName: ?string, studentEmail: ?string, academicCourse: ?string, academicYear: ?string}
+     */
+    private function buildAcademicPayload(User $user): array
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+
+        @ini_set('max_execution_time', '300');
+
+        $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
+
+        try {
+            $courses = $this->academicService->getCourses($session, includeTutor: true);
+            $tasks = $this->collectAllTasks($session, $courses);
+            $gradeReport = $this->academicService->getGrades($session);
+            $tasks = $this->enrichTasksWithGradeReport($tasks, is_array($gradeReport) ? $gradeReport : []);
+            $profileAvatarUrl = $this->extractProfileAvatarUrl($session);
+            $studentName = $this->extractStudentName($session);
+            $studentEmail = $this->extractStudentEmail($session);
+            $academicCourse = $this->extractAcademicCourse($session);
+            $academicYear = $this->extractAcademicYear($session, $courses);
+
+            $normalizedTasks = array_map(function (array $task): array {
+                $fechaIso = is_string($task['fecha_iso'] ?? null) ? (string) $task['fecha_iso'] : '';
+
+                if ($fechaIso === '' && is_string($task['fecha_entrega'] ?? null)) {
+                    $fechaIso = (string) ($this->dateParser->toIso((string) $task['fecha_entrega']) ?? '');
+                    $task['fecha_iso'] = $fechaIso !== '' ? $fechaIso : null;
+                }
+
+                if ($fechaIso !== '') {
+                    try {
+                        $task['dias_restantes'] = CarbonImmutable::now()->diffInDays(CarbonImmutable::parse($fechaIso), false);
+                    } catch (\Throwable) {
+                        $task['dias_restantes'] = $task['dias_restantes'] ?? null;
                     }
+                }
 
-                    if ($fechaIso !== '') {
-                        try {
-                            $task['dias_restantes'] = CarbonImmutable::now()->diffInDays(CarbonImmutable::parse($fechaIso), false);
-                        } catch (\Throwable) {
-                            $task['dias_restantes'] = $task['dias_restantes'] ?? null;
-                        }
-                    }
+                return $task;
+            }, $tasks);
 
-                    return $task;
-                }, $tasks);
-
-                return [
-                    'courses' => $courses,
-                    'tasks' => $normalizedTasks,
-                    'profileAvatarUrl' => $profileAvatarUrl,
-                    'studentName' => $studentName,
-                    'studentEmail' => $studentEmail,
-                    'academicCourse' => $academicCourse,
-                    'academicYear' => $academicYear,
-                ];
-            } finally {
-                $session->close();
-            }
-        });
+            return [
+                'courses' => $courses,
+                'tasks' => $normalizedTasks,
+                'gradeReport' => is_array($gradeReport) ? $gradeReport : [],
+                'profileAvatarUrl' => $profileAvatarUrl,
+                'studentName' => $studentName,
+                'studentEmail' => $studentEmail,
+                'academicCourse' => $academicCourse,
+                'academicYear' => $academicYear,
+            ];
+        } finally {
+            $session->close();
+        }
     }
 
     /**
@@ -88,23 +131,201 @@ class MoodleUserAcademicCache
     public function getGradesForUser(User $user): array
     {
         $ttlSeconds = max(60, (int) config('services.moodle.cache_ttl_seconds', 300));
+        $staleTtlSeconds = max($ttlSeconds, (int) config('services.moodle.cache_stale_ttl_seconds', 900));
+        $lockTtlSeconds = max(10, (int) config('services.moodle.cache_lock_ttl_seconds', 120));
+        $lockWaitMs = max(0, (int) config('services.moodle.cache_lock_wait_ms', 2000));
+        $lockPollMs = max(50, (int) config('services.moodle.cache_lock_poll_ms', 200));
         $cacheKey = self::GRADES_CACHE_PREFIX.$user->id;
+        $lockKey = self::LOCK_PREFIX.'grades:'.$user->id;
 
-        return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($user): array {
-            $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
+        $academicEnvelope = $this->getEnvelope(self::ACADEMIC_CACHE_PREFIX.$user->id);
+        $academicData = $this->extractEnvelopeData($academicEnvelope);
+        if (is_array($academicData['gradeReport'] ?? null)) {
+            return $academicData['gradeReport'];
+        }
 
-            try {
-                return $this->academicService->getGrades($session);
-            } finally {
-                $session->close();
-            }
-        });
+        $envelope = $this->getEnvelope($cacheKey);
+
+        if ($this->isEnvelopeFresh($envelope, $ttlSeconds)) {
+            return $this->extractEnvelopeData($envelope);
+        }
+
+        if ($this->isEnvelopeWithinStale($envelope, $staleTtlSeconds)) {
+            $this->scheduleAsyncRefresh(
+                $lockKey,
+                $cacheKey,
+                $ttlSeconds,
+                $staleTtlSeconds,
+                $lockTtlSeconds,
+                fn (): array => $this->buildGradesPayload($user),
+            );
+
+            return $this->extractEnvelopeData($envelope);
+        }
+
+        return $this->recomputeWithLock(
+            $lockKey,
+            $cacheKey,
+            $ttlSeconds,
+            $staleTtlSeconds,
+            $lockTtlSeconds,
+            $lockWaitMs,
+            $lockPollMs,
+            fn (): array => $this->buildGradesPayload($user),
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildGradesPayload(User $user): array
+    {
+        $session = $this->client->login((string) $user->moodle_username, (string) $user->moodle_password);
+
+        try {
+            return $this->academicService->getGrades($session);
+        } finally {
+            $session->close();
+        }
     }
 
     public function clearForUser(User $user): void
     {
         Cache::forget(self::ACADEMIC_CACHE_PREFIX.$user->id);
         Cache::forget(self::GRADES_CACHE_PREFIX.$user->id);
+        Cache::forget(self::LOCK_PREFIX.'academic:'.$user->id);
+        Cache::forget(self::LOCK_PREFIX.'grades:'.$user->id);
+    }
+
+    /**
+     * @return array{cached_at:int,data:array<string,mixed>}|null
+     */
+    private function getEnvelope(string $cacheKey): ?array
+    {
+        $cached = Cache::get($cacheKey);
+        if (! is_array($cached)) {
+            return null;
+        }
+
+        if (! isset($cached['cached_at']) || ! isset($cached['data']) || ! is_array($cached['data'])) {
+            return null;
+        }
+
+        return [
+            'cached_at' => (int) $cached['cached_at'],
+            'data' => $cached['data'],
+        ];
+    }
+
+    /**
+     * @param array{cached_at:int,data:array<string,mixed>}|null $envelope
+     */
+    private function isEnvelopeFresh(?array $envelope, int $ttlSeconds): bool
+    {
+        if ($envelope === null) {
+            return false;
+        }
+
+        return (time() - (int) $envelope['cached_at']) <= $ttlSeconds;
+    }
+
+    /**
+     * @param array{cached_at:int,data:array<string,mixed>}|null $envelope
+     */
+    private function isEnvelopeWithinStale(?array $envelope, int $staleTtlSeconds): bool
+    {
+        if ($envelope === null) {
+            return false;
+        }
+
+        return (time() - (int) $envelope['cached_at']) <= $staleTtlSeconds;
+    }
+
+    /**
+     * @param array{cached_at:int,data:array<string,mixed>}|null $envelope
+     * @return array<string,mixed>
+     */
+    private function extractEnvelopeData(?array $envelope): array
+    {
+        if ($envelope === null) {
+            return [];
+        }
+
+        return $envelope['data'];
+    }
+
+    /**
+     * @param callable():array<string,mixed> $producer
+     */
+    private function scheduleAsyncRefresh(
+        string $lockKey,
+        string $cacheKey,
+        int $ttlSeconds,
+        int $staleTtlSeconds,
+        int $lockTtlSeconds,
+        callable $producer,
+    ): void {
+        if (! Cache::add($lockKey, 1, now()->addSeconds($lockTtlSeconds))) {
+            return;
+        }
+
+        app()->terminating(function () use ($cacheKey, $ttlSeconds, $staleTtlSeconds, $lockKey, $producer): void {
+            try {
+                $data = $producer();
+
+                Cache::put($cacheKey, [
+                    'cached_at' => time(),
+                    'data' => $data,
+                ], now()->addSeconds(max($ttlSeconds, $staleTtlSeconds)));
+            } catch (\Throwable) {
+                // Keep stale data if refresh fails.
+            } finally {
+                Cache::forget($lockKey);
+            }
+        });
+    }
+
+    /**
+     * @param callable():array<string,mixed> $producer
+     * @return array<string,mixed>
+     */
+    private function recomputeWithLock(
+        string $lockKey,
+        string $cacheKey,
+        int $ttlSeconds,
+        int $staleTtlSeconds,
+        int $lockTtlSeconds,
+        int $lockWaitMs,
+        int $lockPollMs,
+        callable $producer,
+    ): array {
+        if (Cache::add($lockKey, 1, now()->addSeconds($lockTtlSeconds))) {
+            try {
+                $data = $producer();
+
+                Cache::put($cacheKey, [
+                    'cached_at' => time(),
+                    'data' => $data,
+                ], now()->addSeconds(max($ttlSeconds, $staleTtlSeconds)));
+
+                return $data;
+            } finally {
+                Cache::forget($lockKey);
+            }
+        }
+
+        $start = (int) floor(microtime(true) * 1000);
+
+        while (((int) floor(microtime(true) * 1000) - $start) < $lockWaitMs) {
+            usleep($lockPollMs * 1000);
+
+            $envelope = $this->getEnvelope($cacheKey);
+            if ($envelope !== null) {
+                return $this->extractEnvelopeData($envelope);
+            }
+        }
+
+        return $producer();
     }
 
     /**
@@ -128,16 +349,13 @@ class MoodleUserAcademicCache
                 $rawGradeText = trim((string) ($task['calificacion'] ?? ''));
                 $gradeText = mb_strtolower($rawGradeText);
                 $feedbackText = trim((string) ($task['retroalimentacion'] ?? ''));
-                $entregada = $this->isDeliveredFromStatus($statusText);
-                $hasNumericGrade = $this->formatNumericGrade($rawGradeText) !== null;
-                $hasRubricGrade = $this->extractRubricGrade($rawGradeText) !== null;
-                $gradeLooksLikeFeedback = str_contains($gradeText, 'retroaliment')
-                    || str_contains($gradeText, 'feedback')
-                    || str_contains($gradeText, 'comentario')
-                    || str_contains($gradeText, 'observacion');
-                $hasExplicitGrade = $this->isExplicitGradeValue($gradeText, $gradeLooksLikeFeedback);
-                $hasFeedbackAsGrade = $this->hasMeaningfulFeedback($feedbackText)
-                    || $this->hasMeaningfulFeedback($rawGradeText);
+                $entregada = $this->rules->isDeliveredFromStatus($statusText);
+                $hasNumericGrade = $this->rules->formatNumericGrade($rawGradeText) !== null;
+                $hasRubricGrade = $this->rules->extractRubricGrade($rawGradeText) !== null;
+                $gradeLooksLikeFeedback = $this->rules->looksLikeFeedback($gradeText);
+                $hasExplicitGrade = $this->rules->isExplicitGradeValue($gradeText, $gradeLooksLikeFeedback);
+                $hasFeedbackAsGrade = $this->rules->hasMeaningfulFeedback($feedbackText)
+                    || $this->rules->hasMeaningfulFeedback($rawGradeText);
                 $calificada = $hasNumericGrade || $hasRubricGrade || $hasExplicitGrade || $hasFeedbackAsGrade;
 
                 $tasks[] = [
@@ -161,57 +379,6 @@ class MoodleUserAcademicCache
         }
 
         return $tasks;
-    }
-
-    private function isDeliveredFromStatus(string $statusText): bool
-    {
-        if ($statusText === '') {
-            return false;
-        }
-
-        $negativeMarkers = [
-            'sin entregar',
-            'no entregad',
-            'no enviad',
-            'not submitted',
-            'no submission',
-            'draft',
-            'borrador',
-        ];
-
-        foreach ($negativeMarkers as $marker) {
-            if (str_contains($statusText, $marker)) {
-                return false;
-            }
-        }
-
-        return str_contains($statusText, 'entregado')
-            || str_contains($statusText, 'enviado')
-            || str_contains($statusText, 'submitted for grading')
-            || str_contains($statusText, 'submitted');
-    }
-
-    private function isExplicitGradeValue(string $gradeText, bool $gradeLooksLikeFeedback): bool
-    {
-        if ($gradeText === '' || $gradeText === '-' || $gradeLooksLikeFeedback) {
-            return false;
-        }
-
-        $negativeMarkers = [
-            'sin calificar',
-            'not graded',
-            'ungraded',
-            'no grade',
-            'pendiente',
-        ];
-
-        foreach ($negativeMarkers as $marker) {
-            if (str_contains($gradeText, $marker)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -346,16 +513,15 @@ class MoodleUserAcademicCache
         $gradeText = trim((string) ($item['calificacion_texto'] ?? ''));
         $feedbackText = trim((string) ($item['retroalimentacion_texto'] ?? ''));
 
-        $hasNumericGrade = $this->formatNumericGrade($gradeText) !== null;
-        $hasRubricGrade = $this->extractRubricGrade($gradeText) !== null;
+        $gradeTextNormalized = mb_strtolower($gradeText);
 
-        $gradeLooksLikeFeedback = str_contains(mb_strtolower($gradeText), 'retroaliment')
-            || str_contains(mb_strtolower($gradeText), 'feedback')
-            || str_contains(mb_strtolower($gradeText), 'comentario')
-            || str_contains(mb_strtolower($gradeText), 'observacion');
+        $hasNumericGrade = $this->rules->formatNumericGrade($gradeText) !== null;
+        $hasRubricGrade = $this->rules->extractRubricGrade($gradeText) !== null;
 
-        $hasExplicitGrade = $this->isExplicitGradeValue(mb_strtolower($gradeText), $gradeLooksLikeFeedback);
-        $hasFeedbackAsGrade = $this->hasMeaningfulFeedback($feedbackText);
+        $gradeLooksLikeFeedback = $this->rules->looksLikeFeedback($gradeTextNormalized);
+
+        $hasExplicitGrade = $this->rules->isExplicitGradeValue($gradeTextNormalized, $gradeLooksLikeFeedback);
+        $hasFeedbackAsGrade = $this->rules->hasMeaningfulFeedback($feedbackText);
 
         return $hasNumericGrade || $hasRubricGrade || $hasExplicitGrade || $hasFeedbackAsGrade;
     }
@@ -367,69 +533,6 @@ class MoodleUserAcademicCache
         $normalized = (string) preg_replace('/[^a-z0-9]+/u', ' ', $normalized);
 
         return trim((string) preg_replace('/\s+/u', ' ', $normalized));
-    }
-
-    private function hasMeaningfulFeedback(string $text): bool
-    {
-        $normalized = mb_strtolower(trim($text));
-
-        if ($normalized === '') {
-            return false;
-        }
-
-        $clean = preg_replace('/\b(sin calificar|sin calificacion|not graded|sin entregar|no entregado|no enviado|pendiente|calificaci[oó]n|grade|feedback comments?|comentarios? de retroalimentaci[oó]n)\b[:\s-]*/iu', ' ', $normalized);
-        $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
-
-        if ($clean === '') {
-            return false;
-        }
-
-        if (mb_strlen($clean) < 2) {
-            return false;
-        }
-
-        return preg_match('/[\p{L}\p{N}]/u', $clean) === 1;
-    }
-
-    private function extractRubricGrade(string $value): ?string
-    {
-        if (preg_match('/\b(SF|BN|NT|SB)\b/i', trim($value), $match) !== 1) {
-            return null;
-        }
-
-        return mb_strtoupper($match[1]);
-    }
-
-    private function formatNumericGrade(string $value): ?string
-    {
-        $normalized = trim(str_replace(',', '.', $value));
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
-            return $this->normalizeNumberToken($match[1]).'/'.$this->normalizeNumberToken($match[2]);
-        }
-
-        if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)?)\s*$/', $normalized, $match) === 1) {
-            return $this->normalizeNumberToken($match[1]).'/10';
-        }
-
-        return null;
-    }
-
-    private function normalizeNumberToken(string $token): string
-    {
-        $number = (float) $token;
-
-        if (fmod($number, 1.0) === 0.0) {
-            return (string) ((int) $number);
-        }
-
-        $value = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
-
-        return $value;
     }
 
     private function extractProfileAvatarUrl(MoodleSession $session): ?string
